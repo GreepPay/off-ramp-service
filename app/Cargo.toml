@@ -1,0 +1,10 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+controllers = { path = "../controllers" }
+models = { path = "../models" }
+rocket = "0.5.1"
+dotenv = "0.15.0"

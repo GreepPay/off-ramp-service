@@ -1,0 +1,11 @@
+[package]
+name = "services"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+helpers = { path = "../helpers" }
+models = { path = "../models" }
+rocket = "0.5.1"
+diesel = { version = "2.1.0", features = ["chrono"] }
+diesel-async = { version = "0.4.1", features = ["mysql"] }
