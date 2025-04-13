@@ -1,14 +1,15 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+//! Blockchain helper functions and utilities for the Stellar network.
+//! 
+//! This crate provides various helpers for interacting with the Stellar blockchain,
+//! including Auth, kyc, quote, stellartoml, withdraw_deposit, asset_issuers, stellarchain, and common.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod auth;
+pub mod kyc;
+pub mod quote;
+pub mod stellartoml;
+pub mod withdraw_deposit;
+pub mod asset_issuers;
+pub mod stellarchain;
+pub mod common;
+pub mod info;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}

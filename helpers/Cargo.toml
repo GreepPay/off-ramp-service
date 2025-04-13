@@ -1,7 +1,18 @@
 [package]
 name = "helpers"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-rocket = "0.5.1"
+rocket.workspace = true
+stellar_sdk.workspace = true
+stellar-base.workspace = true
+mockall.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+reqwest.workspace = true
+tokio-test.workspace = true
+dotenv.workspace = true
+openssl.workspace = true
+rand.workspace = true
+hex.workspace = true

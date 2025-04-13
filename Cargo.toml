@@ -2,3 +2,30 @@
 resolver = "2"
 
 members = ["controllers", "models", "services", "helpers", "app"]
+
+[workspace.package]
+publish = false
+edition = "2024"
+
+[workspace.dependencies]
+rocket = { version = "0.5.1", features = ["json"] }
+diesel = { version = "2.2.8", features = ["chrono",  "uuid", "numeric", "postgres"] }
+diesel-async = { version = "0.5.2", features = ["mysql", "postgres"] }
+chrono = { version = "0.4.40", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenv = "0.15.0"
+uuid = { version = "1.15.1", features = ["v4", "serde"] }
+stellar_sdk = "0.1.4"
+stellar-base = "0.5.0"
+anyhow = "1.0.70"
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+bigdecimal = { version = "0.4.7" }
+mockall = "0.13.1"
+tokio = { version = "1.30.0", features = ["full"] }
+log = "0.4"
+thiserror = "1.0"
+tokio-test = "0.4"
+openssl = "0.10.50"
+rand = "0.8"
+hex = "0.4.3"
