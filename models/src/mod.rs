@@ -5,5 +5,5 @@ pub mod models;
 pub mod schema;
 
 pub async fn establish_connection() -> Result<AsyncMysqlConnection, ConnectionError> {
-    crate::common::establish_connection("AUTH_DATABASE_URL").await
+    crate::common::establish_connection("DATABASE_URL").await
 }

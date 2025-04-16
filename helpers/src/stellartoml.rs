@@ -2,13 +2,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use thiserror::Error;
 use url::Url;
-use controllers::{
-    api::api::{failure, success, ApiResponse},
-};
-use controllers::api::api::{failure, success, ApiResponse};
-use rocket::http::Status;
-use rocket::response::status;
-use rocket::serde::json::Json;
+
 
 #[derive(Error, Debug)]
 pub enum TomlError {

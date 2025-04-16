@@ -12,4 +12,4 @@ diesel.workspace = true
 dotenv.workspace = true
 diesel-async.workspace = true
 uuid.workspace = true
-bigdecimal.workspace = true
+bigdecimal = { workspace = true, features = ["serde"] }

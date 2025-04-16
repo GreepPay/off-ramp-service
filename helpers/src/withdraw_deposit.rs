@@ -1,11 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use stellar_base::Asset;
-use controllers::api::api::{failure, success, ApiResponse};
-use rocket::http::Status;
-use rocket::response::status;
-use rocket::serde::json::Json;
+
 
 #[derive(Error, Debug)]
 pub enum TransferError {
@@ -67,122 +63,73 @@ impl TransferService {
         }
     }
 
-    pub async fn get_info(
+    pub async fn fetch_info(
         &self,
         transfer_server: &str,
-    ) -> Result<status::Custom<Json<ApiResponse<serde_json::Value>>>, status::Custom<Json<ApiResponse<()>>>> {
+    ) -> Result<serde_json::Value, TransferError> {
         let response = self.client
             .get(&format!("{}/info", transfer_server))
             .send()
-            .await
-            .map_err(|e| {
-                failure(
-                    &format!("Failed to connect to transfer server: {}", e),
-                    Status::BadGateway,
-                )
-            })?;
+            .await?;
 
         if !response.status().is_success() {
-            return Err(failure(
-                &format!("Transfer server info request failed: {}", response.status()),
-                Status::from_code(response.status().as_u16()).unwrap_or(Status::BadRequest),
+            return Err(TransferError::TransferFailed(
+                format!("Transfer server info request failed: {}", response.status())
             ));
         }
 
-        let info = response.json().await.map_err(|e| {
-            failure(
-                &format!("Failed to parse transfer server info: {}", e),
-                Status::InternalServerError,
-            )
-        })?;
-
-        Ok(success(
-            "Transfer info retrieved successfully",
-            info,
-            Status::Ok,
-        ))
+        response.json().await
+            .map_err(|e| TransferError::TransferFailed(
+                format!("Failed to parse transfer server info: {}", e)
+            ))
     }
 
-    pub async fn initiate_withdraw(
+    pub async fn process_withdrawal(
         &self,
         transfer_server: &str,
         request: WithdrawRequest,
         jwt: &str,
-    ) -> Result<status::Custom<Json<ApiResponse<WithdrawResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
+    ) -> Result<WithdrawResponse, TransferError> {
         let response = self.client
             .post(&format!("{}/withdraw", transfer_server))
             .header("Authorization", format!("Bearer {}", jwt))
             .json(&request)
             .send()
-            .await
-            .map_err(|e| {
-                failure(
-                    &format!("Withdraw request failed: {}", e),
-                    Status::BadGateway,
-                )
-            })?;
+            .await?;
 
         if !response.status().is_success() {
-            return Err(failure(
-                &format!("Withdraw initiation failed: {}", response.status()),
-                Status::from_code(response.status().as_u16()).unwrap_or(Status::BadRequest),
+            return Err(TransferError::TransferFailed(
+                format!("Withdraw initiation failed: {}", response.status())
             ));
         }
 
-        let withdraw_response = response.json().await.map_err(|e| {
-            failure(
-                &format!("Failed to parse withdraw response: {}", e),
-                Status::InternalServerError,
-            )
-        })?;
-
-        Ok(success(
-            "Withdraw initiated successfully",
-            withdraw_response,
-            Status::Ok,
-        ))
+        response.json().await
+            .map_err(|e| TransferError::TransferFailed(
+                format!("Failed to parse withdraw response: {}", e)
+            ))
     }
 
-    pub async fn get_transaction_status(
+    pub async fn check_transaction_status(
         &self,
         transfer_server: &str,
         transaction_id: &str,
         jwt: &str,
-    ) -> Result<status::Custom<Json<ApiResponse<TransactionStatus>>>, status::Custom<Json<ApiResponse<()>>>> {
+    ) -> Result<TransactionStatus, TransferError> {
         let response = self.client
             .get(&format!("{}/transaction", transfer_server))
             .header("Authorization", format!("Bearer {}", jwt))
             .query(&[("id", transaction_id)])
             .send()
-            .await
-            .map_err(|e| {
-                failure(
-                    &format!("Transaction status request failed: {}", e),
-                    Status::BadGateway,
-                )
-            })?;
+            .await?;
 
         match response.status().as_u16() {
-            200 => {
-                let status = response.json().await.map_err(|e| {
-                    failure(
-                        &format!("Failed to parse transaction status: {}", e),
-                        Status::InternalServerError,
-                    )
-                })?;
-                Ok(success(
-                    "Transaction status retrieved",
-                    status,
-                    Status::Ok,
-                ))
-            }
-            404 => Err(failure(
-                "Transaction not found",
-                Status::NotFound,
-            )),
-            _ => Err(failure(
-                &format!("Transaction status check failed: {}", response.status()),
-                Status::from_code(response.status().as_u16()).unwrap_or(Status::BadRequest),
+            200 => response.json().await
+                .map_err(|e| TransferError::TransferFailed(
+                    format!("Failed to parse transaction status: {}", e)
+                )),
+            404 => Err(TransferError::TransactionNotFound),
+            _ => Err(TransferError::TransferFailed(
+                format!("Transaction status check failed: {}", response.status())
             )),
         }
     }

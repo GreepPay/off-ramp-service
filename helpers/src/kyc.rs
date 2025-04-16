@@ -1,10 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use jsonwebtoken::Header;
-use controllers::{
-    api::api::{failure, success, ApiResponse},
-};
+
 #[derive(Error, Debug)]
 pub enum KycError {
     #[error("HTTP request failed: {0}")]
@@ -37,34 +34,33 @@ pub struct KycService {
 }
 
 impl KycService {
+    pub fn new() -> Self {
+        KycService {
+            client: Client::new(),
+        }
+    }
+
     pub async fn get_kyc_status(
         &self,
         kyc_server: &str,
         account_id: &str,
         jwt: &str,
-    ) -> Result<status::Custom<Json<ApiResponse<KycStatus>>>, status::Custom<Json<ApiResponse<()>>> {
+    ) -> Result<KycStatus, KycError> {
         let response = self.client
             .get(&format!("{}/customer", kyc_server))
             .header("Authorization", format!("Bearer {}", jwt))
             .query(&[("account", account_id)])
             .send()
-            .await
-            .map_err(|e| {
-                failure(&format!("KYC check request failed: {}", e), Status::BadRequest)
-            })?;
+            .await?;
 
         if !response.status().is_success() {
-            return Err(failure(
-                &format!("KYC check failed with status: {}", response.status()),
-                Status::from_code(response.status().as_u16()).unwrap_or(Status::BadRequest)
+            return Err(KycError::CheckFailed(
+                format!("KYC check failed with status: {}", response.status())
             ));
         }
 
-        let status: KycStatus = response.json().await.map_err(|e| {
-            failure(&format!("Failed to parse KYC response: {}", e), Status::InternalServerError)
-        })?;
-
-        Ok(success("KYC status retrieved successfully", status, Status::Ok))
+        let status: KycStatus = response.json().await?;
+        Ok(status)
     }
 
     pub async fn submit_kyc(
@@ -72,28 +68,21 @@ impl KycService {
         kyc_server: &str,
         kyc_fields: KycFields,
         jwt: &str,
-    ) -> Result<status::Custom<Json<ApiResponse<KycStatus>>>, status::Custom<Json<ApiResponse<()>>> {
+    ) -> Result<KycStatus, KycError> {
         let response = self.client
             .put(&format!("{}/customer", kyc_server))
             .header("Authorization", format!("Bearer {}", jwt))
             .json(&kyc_fields)
             .send()
-            .await
-            .map_err(|e| {
-                failure(&format!("KYC submission request failed: {}", e), Status::BadRequest)
-            })?;
+            .await?;
 
         if !response.status().is_success() {
-            return Err(failure(
-                &format!("KYC submission failed with status: {}", response.status()),
-                Status::from_code(response.status().as_u16()).unwrap_or(Status::BadRequest)
+            return Err(KycError::SubmissionFailed(
+                format!("KYC submission failed with status: {}", response.status())
             ));
         }
 
-        let status: KycStatus = response.json().await.map_err(|e| {
-            failure(&format!("Failed to parse KYC response: {}", e), Status::InternalServerError)
-        })?;
-
-        Ok(success("KYC submitted successfully", status, Status::Ok))
+        let status: KycStatus = response.json().await?;
+        Ok(status)
     }
 }

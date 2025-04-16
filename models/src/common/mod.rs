@@ -1,14 +1,12 @@
-use std::env;
-
-use diesel::ConnectionError;
-use diesel_async::{AsyncConnection, AsyncPgConnection};
-
 use diesel::pg::Pg;
 use diesel::prelude::*;
 use diesel::query_builder::*;
+use diesel::query_dsl::methods::LoadQuery;
 use diesel::sql_types::BigInt;
 
-use diesel_async::methods::LoadQuery;
+
+
+const DEFAULT_PER_PAGE: i64 = 10;
 
 /// Trait for adding pagination capabilities to queries
 ///
@@ -29,8 +27,6 @@ impl<T> Paginate for T {
         }
     }
 }
-
-const DEFAULT_PER_PAGE: i64 = 10;
 
 /// Structure representing a paginated query
 ///
@@ -68,17 +64,17 @@ impl<T> Paginated<T> {
     /// * Total number of pages
     /// * Total number of records
     /// * Number of items per page
-    pub async fn load_and_count_pages<'a, U>(
+    pub fn load_and_count_pages<'a, U>(
         self,
-        conn: &mut AsyncPgConnection,
+        conn: &mut PgConnection,
     ) -> QueryResult<(Vec<U>, i64, i64, i64)>
     where
         T: 'a,
         U: Send + 'a,
-        Self: LoadQuery<'a, AsyncPgConnection, (U, i64)>,
+        Self: LoadQuery<'a, PgConnection, (U, i64)>,
     {
         let per_page = self.per_page;
-        let results = diesel_async::RunQueryDsl::load::<(U, i64)>(self, conn).await?;
+        let results = self.load::<(U, i64)>(conn)?;
         let total = results.first().map(|x| x.1).unwrap_or(0);
         let records = results.into_iter().map(|x| x.0).collect();
         let total_pages = (total as f64 / per_page as f64).ceil() as i64;
@@ -90,7 +86,7 @@ impl<T: Query> Query for Paginated<T> {
     type SqlType = (T::SqlType, BigInt);
 }
 
-impl<T> RunQueryDsl<AsyncPgConnection> for Paginated<T> {}
+impl<T> RunQueryDsl<PgConnection> for Paginated<T> {}
 
 impl<T> QueryFragment<Pg> for Paginated<T>
 where
@@ -126,14 +122,16 @@ pub struct Pagination<T> {
 /// Establishes a connection to the PostgreSQL database using environment variables
 ///
 /// # Returns
-/// * `Ok(AsyncPgConnection)` - Successfully established database connection
+/// * `Ok(PgConnection)` - Successfully established database connection
 /// * `Err(ConnectionError)` - Failed to establish connection
-pub async fn establish_connection() -> Result<AsyncPgConnection, ConnectionError> {
-    let db_url = std::env::var("DATABASE_URL").unwrap();
 
+
+pub fn establish_connection() -> Result<PgConnection, ConnectionError> {
     dotenv::dotenv().ok();
 
-    match AsyncPgConnection::establish(&env::var(&db_url).unwrap()).await {
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+    match PgConnection::establish(&db_url) {
         Ok(connection) => Ok(connection),
         Err(error) => {
             eprintln!("Error establishing connection: {}", error);

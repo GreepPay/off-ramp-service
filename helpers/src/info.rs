@@ -1,11 +1,8 @@
-// Add to transfer_service.rs
 use serde_json::Value;
-use controllers::{
-    api::api::{failure, success, ApiResponse},
-};
-use rocket::http::Status;
-use rocket::response::status;
-use rocket::serde::json::Json;
+use thiserror::Error;
+use serde::Deserialize;
+use serde::Serialize;
+use reqwest::Client;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AssetInfo {
@@ -78,41 +75,48 @@ pub struct InfoResponse {
     pub features: Option<Value>,
 }
 
+#[derive(Error, Debug)]
+pub enum InfoError {
+    #[error("HTTP request failed: {0}")]
+    HttpError(#[from] reqwest::Error),
+    #[error("Transfer server returned error: {0}")]
+    TransferServerError(String),
+    #[error("Asset not supported for operation: {0}")]
+    AssetNotSupported(String),
+    #[error("Invalid operation type (must be 'deposit' or 'withdraw')")]
+    InvalidOperation,
+    #[error("No data received from transfer server")]
+    NoData,
+}
+
+pub struct InfoService {
+    client: Client,
+}
+
 impl InfoService {
+    pub fn new() -> Self {
+        InfoService {
+            client: Client::new(),
+        }
+    }
+
     pub async fn get_info(
         &self,
         transfer_server: &str,
-    ) -> Result<status::Custom<Json<ApiResponse<InfoResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
+    ) -> Result<InfoResponse, InfoError> {
         let response = self.client
             .get(&format!("{}/info", transfer_server))
             .send()
-            .await
-            .map_err(|e| {
-                failure(
-                    &format!("Failed to connect to transfer server: {}", e),
-                    Status::BadGateway,
-                )
-            })?;
+            .await?;
 
         if !response.status().is_success() {
-            return Err(failure(
-                &format!("Transfer server returned error: {}", response.status()),
-                Status::from_code(response.status().as_u16()).unwrap_or(Status::BadRequest),
+            return Err(InfoError::TransferServerError(
+                format!("Status code: {}", response.status())
             ));
         }
 
-        let info: InfoResponse = response.json().await.map_err(|e| {
-            failure(
-                &format!("Failed to parse transfer server response: {}", e),
-                Status::InternalServerError,
-            )
-        })?;
-
-        Ok(success(
-            "Transfer info retrieved successfully",
-            info,
-            Status::Ok,
-        ))
+        let info: InfoResponse = response.json().await?;
+        Ok(info)
     }
 
     pub async fn get_asset_info(
@@ -120,68 +124,49 @@ impl InfoService {
         transfer_server: &str,
         asset_code: &str,
         operation: &str, // "deposit" or "withdraw"
-    ) -> Result<status::Custom<Json<ApiResponse<AssetInfo>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let info_response = self.get_info(transfer_server).await?;
-        let info = info_response.into_inner().data.ok_or_else(|| {
-            failure(
-                "No data received from transfer server",
-                Status::InternalServerError,
-            )
-        })?;
+    ) -> Result<AssetInfo, InfoError> {
+        let info = self.get_info(transfer_server).await?;
 
         match operation {
             "deposit" => {
                 if let Some(deposit_info) = info.deposit.get(asset_code) {
-                    Ok(success(
-                        "Asset deposit info retrieved",
-                        AssetInfo {
-                            asset_code: asset_code.to_string(),
-                            asset_issuer: None,
-                            min_amount: deposit_info.min_amount,
-                            max_amount: deposit_info.max_amount,
-                            fee_fixed: deposit_info.fee_fixed,
-                            fee_percent: deposit_info.fee_percent,
-                            sep12: None,
-                            sep38: None,
-                            extra_fields: None,
-                        },
-                        Status::Ok,
-                    ))
+                    Ok(AssetInfo {
+                        asset_code: asset_code.to_string(),
+                        asset_issuer: None,
+                        min_amount: deposit_info.min_amount,
+                        max_amount: deposit_info.max_amount,
+                        fee_fixed: deposit_info.fee_fixed,
+                        fee_percent: deposit_info.fee_percent,
+                        sep12: None,
+                        sep38: None,
+                        extra_fields: None,
+                    })
                 } else {
-                    Err(failure(
-                        &format!("Asset {} not supported for deposit", asset_code),
-                        Status::BadRequest,
+                    Err(InfoError::AssetNotSupported(
+                        format!("Asset {} not supported for deposit", asset_code)
                     ))
                 }
             }
             "withdraw" => {
                 if let Some(withdraw_info) = info.withdraw.get(asset_code) {
-                    Ok(success(
-                        "Asset withdraw info retrieved",
-                        AssetInfo {
-                            asset_code: asset_code.to_string(),
-                            asset_issuer: None,
-                            min_amount: withdraw_info.min_amount,
-                            max_amount: withdraw_info.max_amount,
-                            fee_fixed: withdraw_info.fee_fixed,
-                            fee_percent: withdraw_info.fee_percent,
-                            sep12: None,
-                            sep38: None,
-                            extra_fields: None,
-                        },
-                        Status::Ok,
-                    ))
+                    Ok(AssetInfo {
+                        asset_code: asset_code.to_string(),
+                        asset_issuer: None,
+                        min_amount: withdraw_info.min_amount,
+                        max_amount: withdraw_info.max_amount,
+                        fee_fixed: withdraw_info.fee_fixed,
+                        fee_percent: withdraw_info.fee_percent,
+                        sep12: None,
+                        sep38: None,
+                        extra_fields: None,
+                    })
                 } else {
-                    Err(failure(
-                        &format!("Asset {} not supported for withdraw", asset_code),
-                        Status::BadRequest,
+                    Err(InfoError::AssetNotSupported(
+                        format!("Asset {} not supported for withdraw", asset_code)
                     ))
                 }
             }
-            _ => Err(failure(
-                "Invalid operation type (must be 'deposit' or 'withdraw')",
-                Status::BadRequest,
-            )),
+            _ => Err(InfoError::InvalidOperation),
         }
     }
 }

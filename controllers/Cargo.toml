@@ -8,6 +8,10 @@ serde.workspace = true
 rocket.workspace = true
 chrono.workspace = true
 uuid.workspace = true
+serde_json.workspace = true
+
+stellar_sdk.workspace = true
+stellar-base.workspace = true
 
 services = { path = "../services" }
 models = { path = "../models" }

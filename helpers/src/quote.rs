@@ -1,10 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use controllers::api::api::{failure, success, ApiResponse};
-use rocket::http::Status;
-use rocket::response::status;
-use rocket::serde::json::Json;
+
 #[derive(Error, Debug)]
 pub enum QuoteError {
     #[error("HTTP request failed: {0}")]
@@ -13,6 +10,8 @@ pub enum QuoteError {
     InvalidJwt,
     #[error("Quote failed: {0}")]
     QuoteFailed(String),
+    #[error("Invalid response status: {0}")]
+    InvalidStatus(u16),
 }
 
 #[derive(Debug, Serialize)]
@@ -56,37 +55,18 @@ impl QuoteService {
     pub async fn get_supported_pairs(
         &self,
         quote_server: &str,
-    ) -> Result<status::Custom<Json<ApiResponse<Vec<String>>>>, status::Custom<Json<ApiResponse<()>>>> {
+    ) -> Result<Vec<String>, QuoteError> {
         let response = self.client
             .get(&format!("{}/prices", quote_server))
             .send()
-            .await
-            .map_err(|e| {
-                failure(
-                    &format!("Failed to connect to quote server: {}", e),
-                    Status::BadGateway,
-                )
-            })?;
+            .await?;
 
         if !response.status().is_success() {
-            return Err(failure(
-                &format!("Quote server returned error: {}", response.status()),
-                Status::from_code(response.status().as_u16()).unwrap_or(Status::BadRequest),
-            ));
+            return Err(QuoteError::InvalidStatus(response.status().as_u16()));
         }
 
-        let pairs = response.json().await.map_err(|e| {
-            failure(
-                &format!("Failed to parse supported pairs: {}", e),
-                Status::InternalServerError,
-            )
-        })?;
-
-        Ok(success(
-            "Supported pairs retrieved successfully",
-            pairs,
-            Status::Ok,
-        ))
+        let pairs = response.json().await?;
+        Ok(pairs)
     }
 
     pub async fn get_quote(
@@ -94,7 +74,7 @@ impl QuoteService {
         quote_server: &str,
         request: QuoteRequest,
         jwt: Option<&str>,
-    ) -> Result<status::Custom<Json<ApiResponse<QuoteResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
+    ) -> Result<QuoteResponse, QuoteError> {
         let mut req = self.client
             .post(&format!("{}/quote", quote_server))
             .json(&request);
@@ -103,31 +83,13 @@ impl QuoteService {
             req = req.header("Authorization", format!("Bearer {}", token));
         }
 
-        let response = req.send().await.map_err(|e| {
-            failure(
-                &format!("Quote request failed: {}", e),
-                Status::BadGateway,
-            )
-        })?;
+        let response = req.send().await?;
 
         if !response.status().is_success() {
-            return Err(failure(
-                &format!("Quote request rejected: {}", response.status()),
-                Status::from_code(response.status().as_u16()).unwrap_or(Status::BadRequest),
-            ));
+            return Err(QuoteError::InvalidStatus(response.status().as_u16()));
         }
 
-        let quote = response.json().await.map_err(|e| {
-            failure(
-                &format!("Failed to parse quote response: {}", e),
-                Status::InternalServerError,
-            )
-        })?;
-
-        Ok(success(
-            "Quote retrieved successfully",
-            quote,
-            Status::Ok,
-        ))
+        let quote = response.json().await?;
+        Ok(quote)
     }
 }
