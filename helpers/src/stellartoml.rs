@@ -39,6 +39,7 @@ pub struct Documentation {
     pub org_logo: Option<String>,
 }
 
+#[derive(Debug)] 
 pub struct TomlFetcher {
     client: Client,
 }

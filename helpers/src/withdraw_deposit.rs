@@ -52,6 +52,7 @@ pub struct TransactionStatus {
     pub external_transaction_id: Option<String>,
 }
 
+#[derive(Debug)] 
 pub struct TransferService {
     client: Client,
 }
