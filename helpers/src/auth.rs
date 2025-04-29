@@ -51,7 +51,7 @@ impl StellarAuth {
             client: Client::new(),
             domain,
             network,
-            jwt_secret,
+            jwt_secret,//remove jwt secret
             web_auth_endpoint: OnceCell::new(),
             signing_key: OnceCell::new(),
         }
@@ -100,7 +100,7 @@ impl StellarAuth {
         response.text().await.map_err(Into::into)
     }
 
-   
+
     
     fn sign_challenge(&self, challenge: &str, keypair: &Keypair) -> Result<String, AuthError> {
         // 1. Parse the XDR
@@ -189,3 +189,49 @@ impl StellarAuth {
         Ok(token)
     }
 }
+
+
+
+
+
+// use reqwest;
+// use toml::Value;
+// use thiserror::Error;
+
+// #[derive(Error, Debug)]
+// pub enum Sep10Error {
+//     #[error("Failed to fetch stellar.toml: {0}")]
+//     FetchError(String),
+//     #[error("Invalid stellar.toml format: {0}")]
+//     ParseError(String),
+//     #[error("Missing required field: {0}")]
+//     MissingField(String),
+// }
+
+// pub async fn fetch_stellar_toml(domain: &str) -> Result<Value, Sep10Error> {
+//     let url = format!("https://{}/.well-known/stellar.toml", domain);
+//     let response = reqwest::get(&url)
+//         .await
+//         .map_err(|e| Sep10Error::FetchError(e.to_string()))?;
+    
+//     let text = response.text()
+//         .await
+//         .map_err(|e| Sep10Error::FetchError(e.to_string()))?;
+    
+//     text.parse::<Value>()
+//         .map_err(|e| Sep10Error::ParseError(e.to_string()))
+// }
+
+// pub fn get_web_auth_endpoint(toml: &Value) -> Result<String, Sep10Error> {
+//     toml.get("WEB_AUTH_ENDPOINT")
+//         .and_then(|v| v.as_str())
+//         .map(|s| s.to_string())
+//         .ok_or_else(|| Sep10Error::MissingField("WEB_AUTH_ENDPOINT".to_string()))
+// }
+
+// pub fn get_signing_key(toml: &Value) -> Result<String, Sep10Error> {
+//     toml.get("SIGNING_KEY")
+//         .and_then(|v| v.as_str())
+//         .map(|s| s.to_string())
+//         .ok_or_else(|| Sep10Error::MissingField("SIGNING_KEY".to_string()))
+// }

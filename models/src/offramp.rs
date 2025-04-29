@@ -5,8 +5,6 @@ use uuid::Uuid;
 use bigdecimal::BigDecimal;
 use crate::schema::offramp_service::*;
 
-
-
 #[derive(Queryable, Serialize, Deserialize, Selectable)]
 #[diesel(table_name = offramp_transactions)]
 pub struct OfframpTransaction {

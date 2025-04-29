@@ -1,5 +1,3 @@
-
-
 pub mod offramp {
     use uuid::Uuid;
     use bigdecimal::BigDecimal;
@@ -192,7 +190,7 @@ pub mod offramp {
             let withdraw_response = self.transfer_service.process_withdrawal(
                 transfer_server,
                 WithdrawRequest {
-                    asset_code: "USDC".to_string(), // Should be configurable
+                    asset_code: "USDC".to_string(),
                     account: account_id.to_string(),
                     amount: amount.to_string(),
                     dest: None,
