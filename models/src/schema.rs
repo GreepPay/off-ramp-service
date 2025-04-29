@@ -2,7 +2,7 @@
 pub mod offramp_service {
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         accounts (id) {
             id -> Uuid,
             stellar_address -> Text,
@@ -20,10 +20,10 @@ pub mod offramp_service {
             memo_type -> Nullable<Text>,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         offramp_transactions (id) {
             id -> Uuid,
             account_id -> Uuid,
@@ -35,10 +35,10 @@ pub mod offramp_service {
             updated_at -> Timestamp,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep38_assets (id) {
             id -> Int4,
             asset -> Text,
@@ -49,10 +49,10 @@ pub mod offramp_service {
             updated_at -> Timestamp,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep38_quotes (id) {
             id -> Uuid,
             original_quote_id -> Text,
@@ -73,10 +73,10 @@ pub mod offramp_service {
             transaction_id -> Nullable<Uuid>,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-        
+
         price_responses (id) {
             id -> Uuid,
             sell_asset -> Text,
@@ -93,10 +93,10 @@ pub mod offramp_service {
             updated_at -> Timestamp,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         offramp_quotes (id) {
             id -> Uuid,
             transaction_id -> Uuid,
@@ -110,10 +110,10 @@ pub mod offramp_service {
             created_at -> Timestamp,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         asset_info (asset_code, operation_type) {
             asset_code -> Text,
             operation_type -> Text,
@@ -129,10 +129,10 @@ pub mod offramp_service {
             updated_at -> Timestamp,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep6_transactions (id) {
             id -> Uuid,
             transaction_id -> Text,
@@ -166,10 +166,10 @@ pub mod offramp_service {
             user_action_required_by -> Nullable<Timestamp>,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep6_fees (id) {
             id -> Uuid,
             asset_code -> Text,
@@ -182,10 +182,10 @@ pub mod offramp_service {
             updated_at -> Timestamp,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep6_withdraw_methods (id) {
             id -> Uuid,
             asset_code -> Text,
@@ -200,10 +200,10 @@ pub mod offramp_service {
             updated_at -> Timestamp,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep12_customers (id) {
             id -> Uuid,
             account -> Text,
@@ -228,10 +228,10 @@ pub mod offramp_service {
             last_verified_at -> Nullable<Timestamp>,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep12_customer_files (id) {
             id -> Uuid,
             customer_id -> Uuid,
@@ -244,10 +244,10 @@ pub mod offramp_service {
             expires_at -> Nullable<Timestamp>,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep12_transactions (id) {
             id -> Uuid,
             transaction_id -> Text,
@@ -261,10 +261,10 @@ pub mod offramp_service {
             updated_at -> Timestamp,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep12_callbacks (id) {
             id -> Uuid,
             account -> Text,
@@ -275,10 +275,10 @@ pub mod offramp_service {
             updated_at -> Timestamp,
         }
     }
-    
+
     diesel::table! {
         use diesel::sql_types::*;
-    
+
         sep12_verifications (id) {
             id -> Uuid,
             customer_id -> Uuid,
@@ -290,14 +290,14 @@ pub mod offramp_service {
             updated_at -> Timestamp,
         }
     }
-    
+
     diesel::joinable!(offramp_quotes -> offramp_transactions (transaction_id));
     diesel::joinable!(offramp_transactions -> accounts (account_id));
     diesel::joinable!(sep38_quotes -> sep6_transactions (transaction_id));
     diesel::joinable!(sep12_customer_files -> sep12_customers (customer_id));
     diesel::joinable!(sep12_transactions -> sep12_customers (customer_id));
     diesel::joinable!(sep12_verifications -> sep12_customers (customer_id));
-    
+
     diesel::allow_tables_to_appear_in_same_query!(
         accounts,
         asset_info,

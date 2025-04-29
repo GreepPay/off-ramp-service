@@ -46,8 +46,7 @@ pub struct StellarAuth {
 #[derive(Debug, Deserialize)]
 struct Claims {
     iss: String,   
-    sub: String,   
-    iat: u64,      
+    sub: String,        
     exp: u64,       
 }
 

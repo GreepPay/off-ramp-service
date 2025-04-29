@@ -4,7 +4,6 @@ use bigdecimal::BigDecimal;
 use chrono::Utc;
 use diesel::prelude::*;
 use uuid::Uuid;
-use reqwest::Client;
 use thiserror::Error;
 use serde::{Serialize, Deserialize};
 use stellar_base::KeyPair;
@@ -111,7 +110,6 @@ pub struct Sep6Service {
     auth: StellarAuth,
     sep12: Sep12Service,
     sep38: Sep38Client,
-    http_client: Client,
     signing_key: KeyPair,
 }
 
@@ -121,7 +119,7 @@ impl Sep6Service {
             auth,
             sep12,
             sep38,
-            http_client: Client::new(),
+            // Remove the http_client initialization since the field has been removed
             signing_key,
         }
     }
@@ -137,7 +135,7 @@ impl Sep6Service {
         if account != request.account {
             return Err(Sep6Error::AuthFailed("Account mismatch".into()));
         }
-      
+
         // Check KYC status
         let kyc_status = self.sep12.get_customer(CustomerQuery {
             id: request.id.clone(),
@@ -291,7 +289,7 @@ impl Sep6Service {
             min_amount: None,
             max_amount: None,
             fee_fixed: Some(quote.fee.total.parse().unwrap_or(0.0)),
-            fee_percent: None, // Already included in the quote price
+            fee_percent: None, 
         })
     }
 
