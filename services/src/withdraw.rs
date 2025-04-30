@@ -7,6 +7,9 @@ use uuid::Uuid;
 use thiserror::Error;
 use serde::{Serialize, Deserialize};
 use stellar_base::KeyPair;
+use once_cell::sync::Lazy;
+use std::sync::Arc;
+use std::str::FromStr;
 use crate::kyc::CustomerQuery;
 
 use models::{
@@ -113,6 +116,17 @@ pub struct Sep6Service {
     signing_key: KeyPair,
 }
 
+static SEP6_SERVICE: Lazy<Arc<Sep6Service>> = Lazy::new(|| {
+    // Initialize dependencies
+    let auth = StellarAuth::global(); // Assuming StellarAuth also uses global pattern
+    let sep12 = Sep12Service::global();
+    let sep38 = Sep38Client::global();
+    let signing_key = KeyPair::from_secret_seed(&std::env::var("SIGNING_KEY_SEED").expect("SIGNING_KEY_SEED must be set"))
+        .expect("Invalid signing key");
+    
+    Arc::new(Sep6Service::new(auth, sep12, sep38, signing_key))
+});
+
 impl Sep6Service {
     pub fn new(auth: StellarAuth, sep12: Sep12Service, sep38: Sep38Client, signing_key: KeyPair) -> Self {
         Self {
@@ -123,7 +137,9 @@ impl Sep6Service {
             signing_key,
         }
     }
-
+    pub fn global() -> Arc<Self> {
+          SEP6_SERVICE.clone()
+    }
     pub async fn withdraw(
         &self,
         request: WithdrawRequest,

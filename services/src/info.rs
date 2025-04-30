@@ -304,7 +304,8 @@ impl Sep38Client {
             fee_asset: &quote.fee.asset,
             fee_details: fee_details_json.as_ref(),
             sell_delivery_method: quote.sell_delivery_method.as_deref(),
-            buy_delivery_method: quote.buy_delivery_method.as_deref(),
+            buy_delivery_method: quote
+                .buy_delivery_method.as_deref(),
             expires_at: quote.expires_at.naive_utc(),
             context: &request.context,
             transaction_id,
