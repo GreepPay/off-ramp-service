@@ -9,7 +9,6 @@ use serde::{Serialize, Deserialize};
 use stellar_base::KeyPair;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
-use std::str::FromStr;
 use crate::kyc::CustomerQuery;
 
 use models::{
@@ -74,6 +73,9 @@ pub struct WithdrawRequest {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub customer_type: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auth_token: Option<String>,
 }
 
 
@@ -110,9 +112,9 @@ pub struct TransactionUpdate<'a> {
 
 
 pub struct Sep6Service {
-    auth: StellarAuth,
-    sep12: Sep12Service,
-    sep38: Sep38Client,
+    auth: Arc<StellarAuth>,
+    sep12: Arc<Sep12Service>,
+    sep38: Arc<Sep38Client>,
     signing_key: KeyPair,
 }
 
@@ -123,12 +125,12 @@ static SEP6_SERVICE: Lazy<Arc<Sep6Service>> = Lazy::new(|| {
     let sep38 = Sep38Client::global();
     let signing_key = KeyPair::from_secret_seed(&std::env::var("SIGNING_KEY_SEED").expect("SIGNING_KEY_SEED must be set"))
         .expect("Invalid signing key");
-    
+
     Arc::new(Sep6Service::new(auth, sep12, sep38, signing_key))
 });
 
 impl Sep6Service {
-    pub fn new(auth: StellarAuth, sep12: Sep12Service, sep38: Sep38Client, signing_key: KeyPair) -> Self {
+    pub fn new(auth: Arc<StellarAuth>, sep12: Arc<Sep12Service>, sep38: Arc<Sep38Client>, signing_key: KeyPair) -> Self {
         Self {
             auth,
             sep12,
@@ -143,8 +145,11 @@ impl Sep6Service {
     pub async fn withdraw(
         &self,
         request: WithdrawRequest,
-        auth_token: &str,
     ) -> Result<WithdrawResponse, Sep6Error> {
+        // Get auth token from request
+        let auth_token = request.auth_token.as_deref()
+            .ok_or_else(|| Sep6Error::AuthFailed("Auth token is required".into()))?;
+
         // Verify authentication
         let account = self.auth.verify_jwt(auth_token).map_err(|e| Sep6Error::AuthFailed(e.to_string()))?;
 
@@ -192,7 +197,7 @@ impl Sep6Service {
 
         // If quote was provided, validate it
         if let Some(quote_id) = request.quote_id {
-            let quote = self.sep38.get_quote(&quote_id, auth_token).await
+            let quote = self.sep38.get_quote(&quote_id).await
                 .map_err(|e| Sep6Error::QuoteError(e.to_string()))?;
 
             // Update transaction with quote details
@@ -225,8 +230,11 @@ impl Sep6Service {
     pub async fn withdraw_exchange(
         &self,
         request: WithdrawRequest,
-        auth_token: &str,
     ) -> Result<WithdrawResponse, Sep6Error> {
+        // Get auth token from request
+        let auth_token = request.auth_token.as_deref()
+            .ok_or_else(|| Sep6Error::AuthFailed("Auth token is required".into()))?;
+
         // Verify authentication
         let account = self.auth.verify_jwt(auth_token)
             .map_err(|e| Sep6Error::AuthFailed(e.to_string()))?;
@@ -240,7 +248,7 @@ impl Sep6Service {
             .ok_or_else(|| Sep6Error::InvalidRequest("quote_id is required for exchange withdrawals".into()))?;
 
         // Get the quote from SEP-38 service
-        let quote = self.sep38.get_quote(&quote_id, auth_token).await
+        let quote = self.sep38.get_quote(&quote_id).await
             .map_err(|e| Sep6Error::QuoteError(e.to_string()))?;
 
         // Validate the quote is still valid
@@ -308,14 +316,10 @@ impl Sep6Service {
             fee_percent: None, 
         })
     }
-
     pub async fn get_transaction(
         &self,
         id: &str,
-        auth_token: &str,
     ) -> Result<Sep6Transaction, Sep6Error> {
-        let account = self.auth.verify_jwt(auth_token).map_err(|e| Sep6Error::AuthFailed(e.to_string()))?;
-
         let mut conn = establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
 
         let transaction: Sep6Transaction = sep6_transactions::table
@@ -323,26 +327,15 @@ impl Sep6Service {
             .first(&mut conn)
             .map_err(|_| Sep6Error::TransactionNotFound)?;
 
-        if transaction.account != account {
-            return Err(Sep6Error::AuthFailed("Transaction does not belong to account".into()));
-        }
-
         Ok(transaction)
     }
 
     pub async fn get_transactions(
         &self,
         account: &str,
-        auth_token: &str,
         asset_code: Option<&str>,
         limit: Option<i64>,
     ) -> Result<Vec<Sep6Transaction>, Sep6Error> {
-        let verified_account = self.auth.verify_jwt(auth_token).map_err(|e| Sep6Error::AuthFailed(e.to_string()))?;
-
-        if verified_account != account {
-            return Err(Sep6Error::AuthFailed("Account mismatch".into()));
-        }
-
         let mut conn = establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
 
         let mut query = sep6_transactions::table
@@ -370,8 +363,6 @@ impl Sep6Service {
         stellar_tx_id: Option<&str>,
         external_tx_id: Option<&str>,
     ) -> Result<(), Sep6Error> {
-
-
         let mut conn = establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
 
         let update = TransactionUpdate {
@@ -393,6 +384,5 @@ impl Sep6Service {
 
         Ok(())
     }
-
 
 }

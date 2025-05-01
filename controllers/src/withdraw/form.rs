@@ -33,6 +33,7 @@ pub mod form {
                 funding_method: form.funding_method.map(|s| s.to_string()),
                 id: form.id.map(|s| s.to_string()),
                 customer_type: form.customer_type.map(|s| s.to_string()),
+                auth_token: None,
             }
         }
     }

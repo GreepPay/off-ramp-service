@@ -6,9 +6,9 @@ edition = "2024"
 [dependencies]
 controllers = { path = "../controllers" }
 models = { path = "../models" }
-helpers ={ path = "../helpers"}
 services = { path = "../services" }
 rocket.workspace = true
 dotenv.workspace = true
 stellar-base.workspace = true
 stellar_sdk.workspace = true
+uuid.workspace = true

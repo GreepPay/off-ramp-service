@@ -26,6 +26,7 @@ pub struct NewSep38Asset<'a> {
     pub sell_delivery_methods: Option<&'a serde_json::Value>,
     pub buy_delivery_methods: Option<&'a serde_json::Value>,
     pub country_codes: Option<&'a serde_json::Value>,
+    
 }
 
 

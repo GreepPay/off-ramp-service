@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["controllers", "models", "services", "helpers", "app"]
+members = ["controllers", "models", "services", "app"]
 
 [workspace.package]
 publish = false

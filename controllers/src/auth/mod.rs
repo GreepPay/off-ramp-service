@@ -1,8 +1,6 @@
 use form::form::{ChallengeRequestForm, TokenRequestForm};
 use rocket::form::Form;
 use services::sep10auth::StellarAuth;
-use rocket::State;
-use std::sync::Arc;
 pub mod form;
 
 
@@ -17,8 +15,8 @@ pub async fn get_challenge_controller(
 
 pub async fn get_jwt_token_controller(
     request: Form<TokenRequestForm<'_>>,
-    auth: &State<Arc<StellarAuth>>,
 ) -> Result<String, String> {
+    let auth = StellarAuth::global(); 
     let token = auth.get_jwt_token(&request.transaction).await
         .map_err(|e| e.to_string())?;
     Ok(token)

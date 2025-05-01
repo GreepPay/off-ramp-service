@@ -6,7 +6,6 @@ use stellar_sdk::Keypair;
 use stellar_base::transaction::TransactionEnvelope;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
-use std::str::FromStr;
 use chrono::Utc;
 use once_cell::sync::OnceCell;
 use stellar_base::Operation;
@@ -77,8 +76,12 @@ struct TokenResponse {
     token: String,
 }
 
+static STELLAR_AUTH: Lazy<Arc<StellarAuth>> = Lazy::new(|| {
+    Arc::new(StellarAuth::from_env().expect("Failed to initialize StellarAuth from environment"))
+});
+
 impl StellarAuth {
-    
+
 
     pub fn from_env() -> Result<Self, AuthError> {
         let home_domain = env::var("HOME_DOMAIN")
@@ -104,7 +107,9 @@ impl StellarAuth {
             challenge_timeout,
         })
     }
-
+    pub fn global() -> Arc<Self> {
+        STELLAR_AUTH.clone()
+    }
     pub async fn init(&self) -> Result<(), AuthError> {
         let toml = self.fetch_stellar_toml().await?;
         self.web_auth_endpoint.set(toml.web_auth_endpoint)
@@ -113,8 +118,6 @@ impl StellarAuth {
             .map_err(|_| AuthError::ConfigError("SIGNING_KEY already set".into()))?;
         Ok(())
     }
-    pub fn global() -> Arc<Self> {
-          SEP6_SERVICE.clone()
 
     pub async fn authenticate(&self, account_id: &str, keypair: &KeyPair) -> Result<String, AuthError> {
         let challenge = self.get_challenge(account_id, None).await?;
@@ -337,5 +340,3 @@ impl StellarAuth {
         Ok(token)
     }
 }
-
-

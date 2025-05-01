@@ -19,6 +19,8 @@ pub mod form {
         pub sell_delivery_method: Option<&'r str>,
         #[field(name = "buy_delivery_method")]
         pub buy_delivery_method: Option<&'r str>,
+        #[field(name = "transaction_id")]
+        pub transaction_id: Option<&'r str>,
         #[field(name = "country_code")]
         pub country_code: Option<&'r str>,
         pub context: &'r str,
@@ -39,6 +41,7 @@ pub mod form {
                           }),
                 sell_delivery_method: form.sell_delivery_method.map(|s| s.to_string()),
                 buy_delivery_method: form.buy_delivery_method.map(|s| s.to_string()),
+                transaction_id: None,
                 country_code: form.country_code.map(|s| s.to_string()),
                 context: form.context.to_string(),
             }

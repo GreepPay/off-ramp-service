@@ -7,6 +7,8 @@ use std::str::FromStr;
 use bigdecimal::BigDecimal;
 use diesel::prelude::*;
 use diesel::upsert::excluded;
+use once_cell::sync::Lazy;
+use std::sync::Arc;
 
 
 use models::{
@@ -71,6 +73,7 @@ pub struct QuoteRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub buy_delivery_method: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction_id: Option<Uuid>,
     pub country_code: Option<String>,
     pub context: String,
 }
@@ -108,6 +111,11 @@ pub enum Sep38Error {
     DatabaseError(String),
 }
 
+static SEP38_CLIENT: Lazy<Arc<Sep38Client>> = Lazy::new(|| {
+    let base_url = std::env::var("SEP38_SERVER_URL").expect("SEP38_SERVER_URL must be set");
+    Arc::new(Sep38Client::new(base_url))
+});
+
 pub struct Sep38Client {
     client: Client,
     base_url: String,
@@ -122,19 +130,25 @@ impl Sep38Client {
         }
     }
 
+
+    pub fn global() -> Arc<Self> {
+        SEP38_CLIENT.clone()
+
+    }
+
     pub async fn get_info(&self) -> Result<Vec<AssetInfo>, Sep38Error> {
         let url = format!("{}/info", self.base_url);
         let response = self.client.get(&url).send().await?;
-        
+
         if !response.status().is_success() {
             return Err(Sep38Error::ServerError(format!("Status: {}", response.status())));
         }
 
         let info: Vec<AssetInfo> = response.json().await?;
-        
+
         let mut conn = establish_connection()
             .map_err(|e| Sep38Error::DatabaseError(e.to_string()))?;
-            
+
         for asset in &info {
             let delivery_methods = serde_json::to_value(asset.sell_delivery_methods.clone())
                 .map_err(|e| Sep38Error::DatabaseError(e.to_string()))?;
@@ -205,7 +219,7 @@ impl Sep38Client {
         }
 
         let response = self.client.get(&url).send().await?;
-        
+
         if !response.status().is_success() {
             return Err(Sep38Error::ServerError(format!("Status: {}", response.status())));
         }
@@ -250,7 +264,7 @@ impl Sep38Client {
         url.push_str(&format!("?{}", query.join("&")));
 
         let response = self.client.get(&url).send().await?;
-        
+
         if !response.status().is_success() {
             return Err(Sep38Error::ServerError(format!("Status: {}", response.status())));
         }
@@ -261,26 +275,27 @@ impl Sep38Client {
     pub async fn create_quote(
         &self,
         request: QuoteRequest,
-        auth_token: &str,
-        transaction_id: Option<Uuid>,
     ) -> Result<QuoteResponse, Sep38Error> {
         let url = format!("{}/quote", self.base_url);
+        let auth_token = std::env::var("SEP38_AUTH_TOKEN")
+            .map_err(|_| Sep38Error::ServerError("SEP38_AUTH_TOKEN environment variable not set".to_string()))?;
+
         let response = self.client
             .post(&url)
             .header("Authorization", format!("Bearer {}", auth_token))
             .json(&request)
             .send()
             .await?;
-        
+
         if !response.status().is_success() {
             return Err(Sep38Error::ServerError(format!("Status: {}", response.status())));
         }
 
         let quote: QuoteResponse = response.json().await?;
-        
+
         let mut conn = establish_connection()
             .map_err(|e| Sep38Error::DatabaseError(e.to_string()))?;
-            
+
         let fee_details_json = match &quote.fee.details {
             Some(details) => Some(serde_json::to_value(details)
                 .map_err(|e| Sep38Error::DatabaseError(e.to_string()))?),
@@ -308,7 +323,7 @@ impl Sep38Client {
                 .buy_delivery_method.as_deref(),
             expires_at: quote.expires_at.naive_utc(),
             context: &request.context,
-            transaction_id,
+            transaction_id: request.transaction_id
         };
 
 
@@ -323,11 +338,10 @@ impl Sep38Client {
     pub async fn get_quote(
         &self,
         quote_id: &str,
-        auth_token: &str,
     ) -> Result<QuoteResponse, Sep38Error> {
         let mut conn = establish_connection()
             .map_err(|e| Sep38Error::DatabaseError(e.to_string()))?;
-            
+
         let db_quote: Option<Sep38Quote> = sep38_quotes::table
             .filter(sep38_quotes::original_quote_id.eq(quote_id))
             .first(&mut conn)
@@ -355,17 +369,20 @@ impl Sep38Client {
             });
         }
 
+        let auth_token = std::env::var("SEP38_AUTH_TOKEN")
+            .map_err(|_| Sep38Error::ServerError("SEP38_AUTH_TOKEN environment variable not set".to_string()))?;
+
         let url = format!("{}/quote/{}", self.base_url, quote_id);
         let response = self.client
             .get(&url)
             .header("Authorization", format!("Bearer {}", auth_token))
             .send()
             .await?;
-        
+
         if response.status() == 404 {
             return Err(Sep38Error::QuoteNotFound);
         }
-        
+
         if !response.status().is_success() {
             return Err(Sep38Error::ServerError(format!("Status: {}", response.status())));
         }

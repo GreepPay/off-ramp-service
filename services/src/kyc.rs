@@ -2,6 +2,8 @@ use reqwest::Client;
 use stellar_base::KeyPair;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
+use once_cell::sync::Lazy;
+use std::sync::Arc;
 use uuid::Uuid;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -209,7 +211,7 @@ impl From<std::string::FromUtf8Error> for Sep12Error {
 }
 
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CallbackRequest {
     pub account: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -221,7 +223,7 @@ pub struct CallbackRequest {
     pub url: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CallbackResponse {
     pub success: bool,
 }
@@ -251,14 +253,14 @@ pub struct FileQuery {
     pub customer_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FileResponse {
     pub id: String,
     pub name: String,
 
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize,Deserialize)]
 pub struct FileListResponse {
     pub files: Vec<FileResponse>,
 }
@@ -267,22 +269,34 @@ pub struct FileListResponse {
 
 #[derive(Debug)]
 pub struct Sep12Service {
-    auth: StellarAuth,
+    auth: Arc<StellarAuth>,
     kyc_server: String,
     http_client: Client,
     keypair: KeyPair,  
 }
 
 
+static SEP12_SERVICE: Lazy<Arc<Sep12Service>> = Lazy::new(|| {
+    let auth = StellarAuth::global();
+    let keypair = KeyPair::from_secret_seed(&std::env::var("SIGNING_KEY_SEED").expect("SIGNING_KEY_SEED must be set"))
+        .expect("Invalid signing key");
+    let kyc_server = std::env::var("KYC_SERVER_URL").expect("KYC_SERVER_URL must be set");
+
+    Arc::new(Sep12Service::new(auth, keypair, kyc_server))
+});
+
 
 impl Sep12Service {
-    pub fn new(auth: StellarAuth,keypair: KeyPair, kyc_server: String) -> Self {
+    pub fn new(auth: Arc<StellarAuth>, keypair: KeyPair, kyc_server: String) -> Self {
         Self {
             auth,
             kyc_server,
             http_client: Client::new(),
             keypair,
         }
+    }
+    pub fn global() -> Arc<Self> {
+        SEP12_SERVICE.clone()
     }
 
     // GET /customer 

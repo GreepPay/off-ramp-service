@@ -1,30 +1,27 @@
 use rocket::form::Form;
-use services::info::{Sep38Client,AssetInfo,PriceAsset,QuoteResponse,QuoteRequest};
+use services::info::{Sep38Client,AssetInfo, PriceAsset, QuoteResponse, QuoteRequest};
 use models::info::PriceResponse;
 use form::form::{
     PricesRequestForm,
     PriceRequestForm,
     QuoteRequestForm,
-
 };
-use rocket::State;
-use std::sync::Arc;
-use uuid::Uuid;
+
+use std::error::Error;
 
 pub mod form;
 
 // GET /info
-pub async fn get_info_controller(
-    client: &State<Arc<Sep38Client>>,
-) -> Result<Vec<AssetInfo>, Box<dyn std::error::Error>> {
+pub async fn get_info_controller() -> Result<Vec<AssetInfo>, Box<dyn Error>> {
+    let client = Sep38Client::global();
     Ok(client.get_info().await?)
 }
 
 // GET /prices
 pub async fn get_prices_controller(
     form: Form<PricesRequestForm<'_>>,
-    client: &State<Arc<Sep38Client>>,
-) -> Result<Vec<PriceAsset>, Box<dyn std::error::Error>> {
+) -> Result<Vec<PriceAsset>, Box<dyn Error>> {
+    let client = Sep38Client::global();
     Ok(client.get_prices(
         form.sell_asset,
         form.buy_asset,
@@ -39,8 +36,8 @@ pub async fn get_prices_controller(
 // GET /price
 pub async fn get_price_controller(
     form: Form<PriceRequestForm<'_>>,
-    client: &State<Arc<Sep38Client>>,
-) -> Result<PriceResponse, Box<dyn std::error::Error>> {
+) -> Result<PriceResponse, Box<dyn Error>> {
+    let client = Sep38Client::global();
     Ok(client.get_price(
         form.sell_asset,
         form.buy_asset,
@@ -53,21 +50,17 @@ pub async fn get_price_controller(
     ).await?)
 }
 
-
 pub async fn create_quote_controller(
     form: Form<QuoteRequestForm<'_>>,
-    client: &State<Arc<Sep38Client>>,
-    auth_token: &str,
-    transaction_id: Option<Uuid>,
-) -> Result<QuoteResponse, Box<dyn std::error::Error>> {
+) -> Result<QuoteResponse, Box<dyn Error>> {
+    let client = Sep38Client::global();
     let quote_request: QuoteRequest = form.into_inner().into();
-    Ok(client.create_quote(quote_request, auth_token, transaction_id).await?)
+    Ok(client.create_quote(quote_request).await?)
 }
 
 pub async fn get_quote_controller(
     id: &str,
-    client: &State<Arc<Sep38Client>>,
-    auth_token: &str,
-) -> Result<QuoteResponse, Box<dyn std::error::Error>> {
-    Ok(client.get_quote(id, auth_token).await?)
+) -> Result<QuoteResponse, Box<dyn Error>> {
+    let client = Sep38Client::global();
+    Ok(client.get_quote(id).await?)
 }
