@@ -1,2 +1,4 @@
-pub mod auth;
-pub mod notification;
+pub mod sep10auth;
+pub mod kyc;
+pub mod info;
+pub mod withdraw;
