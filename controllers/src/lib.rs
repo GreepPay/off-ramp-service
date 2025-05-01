@@ -1,3 +1,7 @@
 pub mod api;
 pub mod auth;
-pub mod notification;
+pub mod kyc;
+pub mod withdraw;
+pub mod info;
+
+
