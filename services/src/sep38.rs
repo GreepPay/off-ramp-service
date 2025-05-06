@@ -230,9 +230,9 @@ impl Sep38Service {
         buy_asset: String,
         sell_amount: String,
         buy_amount: String,
-        sell_delivery_method: String,
-        buy_delivery_method: String,
-        country_code: String,
+        sell_delivery_method: Option<String>,
+        buy_delivery_method: Option<String>,
+        country_code: Option<String>,
         context: String,
     ) -> Result<PriceResponse, Sep38Error> {
         let mut request = self.client
@@ -254,16 +254,22 @@ impl Sep38Service {
             request = request.query(&[("buy_amount", &buy_amount)]);
         }
 
-        if !sell_delivery_method.is_empty() {
-            request = request.query(&[("sell_delivery_method", &sell_delivery_method)]);
+        if let Some(method) = &sell_delivery_method {
+            if !method.is_empty() {
+                request = request.query(&[("sell_delivery_method", method)]);
+            }
         }
 
-        if !buy_delivery_method.is_empty() {
-            request = request.query(&[("buy_delivery_method", &buy_delivery_method)]);
+        if let Some(method) = &buy_delivery_method {
+            if !method.is_empty() {
+                request = request.query(&[("buy_delivery_method", method)]);
+            }
         }
 
-        if !country_code.is_empty() {
-            request = request.query(&[("country_code", &country_code)]);
+        if let Some(code) = &country_code {
+            if !code.is_empty() {
+                request = request.query(&[("country_code", code)]);
+            }
         }
 
         request = request.query(&[("context", &context)]);

@@ -9,7 +9,6 @@ pub async fn get_sep38_info(
 ) -> Result<Vec<services::sep38::AssetInfo>, Box<dyn std::error::Error>> {
     Ok(sep38_service.get_exchange_info().await?)
 }
-
 pub async fn get_sep38_price(
     data: Form<Sep38PriceForm>,
     sep38_service: &Sep38Service,
@@ -19,9 +18,9 @@ pub async fn get_sep38_price(
         data.buy_asset.clone(),
         data.sell_amount.clone(),
         data.buy_amount.clone(),
-        data.sell_delivery_method.clone().unwrap_or_default(),
-        data.buy_delivery_method.clone().unwrap_or_default(),
-        data.country_code.clone().unwrap_or_default(),
+        Some(data.sell_delivery_method.clone().unwrap_or_default()),
+        Some(data.buy_delivery_method.clone().unwrap_or_default()),
+        Some(data.country_code.clone().unwrap_or_default()),
         data.context.clone(),
     ).await?)
 }
