@@ -1,10 +1,21 @@
 [package]
 name = "app"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
 
 [dependencies]
 controllers = { path = "../controllers" }
 models = { path = "../models" }
+helpers ={ path = "../helpers"}
+services = { path = "../services" }
 rocket = "0.5.1"
 dotenv = "0.15.0"
+stellar-base = "0.5.0"
+stellar_sdk = "0.1.4"
+
+
+

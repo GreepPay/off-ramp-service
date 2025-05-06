@@ -1,12 +1,17 @@
 [package]
 name = "controllers"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
+serde.workspace = true
+rocket.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+bigdecimal.workspace = true
+serde_json.workspace = true
+stellar_sdk.workspace = true
+stellar-base.workspace = true
+reqwest.workspace = true
 services = { path = "../services" }
 models = { path = "../models" }
-rocket = { version = "0.5.1", features = ["json"] }
-chrono = "*"
-uuid = { version = "1.8.0", features = ["v4"] }
