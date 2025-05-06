@@ -383,7 +383,7 @@ impl Sep12Service {
                     .execute(&mut conn)
                     .map_err(|e| Sep12Error::DatabaseError(e.to_string()))?;
                 }
-                none => {
+                __ => {
                     diesel::delete(
                         sep12_customers::table
                             .filter(sep12_customers::account.eq(account))
