@@ -1,19 +1,21 @@
 use rocket::form::Form;
 
-use services::sep38::Sep38Service;
-use form::form::{ Sep38PriceForm, Sep38QuoteForm, Sep38GetQuoteForm };
+use services::sep38::sep38::{get_exchange_info,get_exchange_prices,quote_exchange_price,get_quote,AssetInfo,PriceResponse,QuoteResponse, };
+use form::form::{ Sep38PriceForm, Sep38QuoteForm, Sep38GetQuoteForm , Sep38InfoForm};
 pub mod form;
 
 pub async fn get_sep38_info(
-    sep38_service: &Sep38Service,
-) -> Result<Vec<services::sep38::AssetInfo>, Box<dyn std::error::Error>> {
-    Ok(sep38_service.get_exchange_info().await?)
+      data: Form<Sep38InfoForm<'_>>,
+) -> Result<Vec<AssetInfo>, Box<dyn std::error::Error>> {
+    Ok(get_exchange_info(
+        data.slug
+    ).await?)
 }
 pub async fn get_sep38_price(
-    data: Form<Sep38PriceForm>,
-    sep38_service: &Sep38Service,
-) -> Result<services::sep38::PriceResponse, Box<dyn std::error::Error>> {
-    Ok(sep38_service.get_exchange_prices(
+    data: Form<Sep38PriceForm<'_>>,
+) -> Result<PriceResponse, Box<dyn std::error::Error>> {
+    Ok(get_exchange_prices(
+        data.slug,
         data.sell_asset.clone(),
         data.buy_asset.clone(),
         data.sell_amount.clone(),
@@ -27,9 +29,9 @@ pub async fn get_sep38_price(
 
 pub async fn create_sep38_quote(
     data: Form<Sep38QuoteForm<'_>>,
-    sep38_service: &Sep38Service,
-) -> Result<services::sep38::QuoteResponse, Box<dyn std::error::Error>> {
-    Ok(sep38_service.quote_exchange_price(
+) -> Result<QuoteResponse, Box<dyn std::error::Error>> {
+    Ok(quote_exchange_price(
+        data.slug,
         data.account,
         data.sell_asset,
         data.buy_asset,
@@ -45,9 +47,9 @@ pub async fn create_sep38_quote(
 
 pub async fn get_sep38_quote(
     data: Form<Sep38GetQuoteForm<'_>>,
-    sep38_service: &Sep38Service,
-) -> Result<services::sep38::QuoteResponse, Box<dyn std::error::Error>> {
-    Ok(sep38_service.get_quote(
+) -> Result<QuoteResponse, Box<dyn std::error::Error>> {
+    Ok(get_quote(
+        data.slug,
         data.account,
         data.quote_id,
     ).await?)

@@ -16,6 +16,11 @@ pub mod form {
     }
 
     #[derive(FromForm)]
+    pub struct Sep6InfoForm<'r> {
+        pub slug: &'r str,
+    }
+
+    #[derive(FromForm)]
     pub struct Sep6WithdrawExchangeForm<'r> {
         pub slug: &'r str,
         pub account: &'r str,

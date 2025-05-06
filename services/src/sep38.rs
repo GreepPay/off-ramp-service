@@ -5,15 +5,19 @@
 // Exchange  Fees
 // Exchange rate
 // Quote exchange Price 
-
+pub mod sep38{
 use bigdecimal::BigDecimal;
+use reqwest::Client; // This is the correct import for Client
 use diesel::prelude::*;
-use stellar_base::KeyPair;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 // Import the FromStr trait to use from_str
 use std::str::FromStr;
-use crate::sep10::StellarAuth;
+use helpers::{
+    auth::authenticate,
+    keypair::generate_keypair
+};
+use crate::common::get_anchor_config_details;
 
 use models::{
     common::establish_connection,
@@ -25,19 +29,22 @@ use models::{
 pub enum Sep38Error {
     #[error("HTTP error: {0}")]
     HttpError(#[from] reqwest::Error),
-    
+
     #[error("Authentication failed")]
     AuthFailed,
     
+    #[error("Keypair failed")]
+    Keypairgenerationfailed,
+
     #[error("Invalid request: {0}")]
     InvalidRequest(String),
-    
+
     #[error("Quote not found")]
     QuoteNotFound,
-    
+
     #[error("Asset not supported")]
     AssetNotSupported,
-    
+
     #[error("Database error: {0}")]
     DatabaseError(String),
 }
@@ -166,35 +173,30 @@ pub struct QuoteRequest {
     pub context: String,
 }
 
-pub struct Sep38Service {
-    client: reqwest::Client,
-    auth_service: StellarAuth,
-    quote_server: String,
-    keypair: KeyPair,
-}
 
-impl Sep38Service {
-    pub fn new(auth_service: StellarAuth, keypair: KeyPair, quote_server: String) -> Self {
-        Self {
-            client: reqwest::Client::new(),
-            auth_service,
-            quote_server,
-            keypair,
-        
-        }
-    }
+// 1. GET /exchange_info
+pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Error> {
+    let client = Client::new();
+    
+    let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+        .map_err(|_| Sep38Error::AuthFailed)?;
+    let quote_server = &anchor_config.general_info.anchor_quote_server;
+    // Unwrap the Option or provide a default value
+    let quote_server_str = quote_server.as_ref().map_or_else(
+        || "".to_string(),  // Default value if None
+        |s| s.to_string()   // Use the string value if Some
+    );
+    
+    
+    let response = client
+        .get(&format!("{}/info",quote_server_str))
+        .send()
+        .await?;
 
-    // 1. GET /exchange_info
-    pub async fn get_exchange_info(&self) -> Result<Vec<AssetInfo>, Sep38Error> {
-        let response = self.client
-            .get(&format!("{}/info", self.quote_server))
-            .send()
-            .await?;
-        
         if response.status().is_success() {
             let info: serde_json::Value = response.json().await?;
             let assets = info["assets"].as_array().ok_or(Sep38Error::InvalidRequest("Invalid response format".to_string()))?;
-            
+
             let mut result = Vec::new();
             for asset in assets {
                 result.push(AssetInfo {
@@ -216,7 +218,7 @@ impl Sep38Service {
                     }),
                 });
             }
-            
+
             Ok(result)
         } else {
             Err(Sep38Error::InvalidRequest(format!("Status: {}", response.status())))
@@ -225,7 +227,7 @@ impl Sep38Service {
 
     // 2. GET /exchange_prices
     pub async fn get_exchange_prices(
-        &self,
+        slug: &str,
         sell_asset: String,
         buy_asset: String,
         sell_amount: String,
@@ -235,8 +237,19 @@ impl Sep38Service {
         country_code: Option<String>,
         context: String,
     ) -> Result<PriceResponse, Sep38Error> {
-        let mut request = self.client
-            .get(&format!("{}/prices", self.quote_server));
+        let client = Client::new();
+        
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+            .map_err(|_| Sep38Error::AuthFailed)?;
+        let quote_server = &anchor_config.general_info.anchor_quote_server;
+        // Unwrap the Option or provide a default value
+        let quote_server_str = quote_server.as_ref().map_or_else(
+            || "".to_string(),  // Default value if None
+            |s| s.to_string()   // Use the string value if Some
+        );
+        
+        let mut request = client
+            .get(&format!("{}/prices", quote_server_str));
 
         if !sell_asset.is_empty() {
             request = request.query(&[("sell_asset", &sell_asset)]);
@@ -284,7 +297,7 @@ impl Sep38Service {
 
     // 3. GET /exchange_fees
     pub async fn get_exchange_fees(
-        &self,
+      slug: &str,
         sell_asset: &str,
         buy_asset: &str,
         sell_amount: Option<&str>,
@@ -294,34 +307,43 @@ impl Sep38Service {
         country_code: Option<&str>,
         context: &str,
     ) -> Result<QuoteResponse, Sep38Error> {
-        let mut request = self.client
-            .get(&format!("{}/price", self.quote_server))
+        let client = Client::new();
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+            .map_err(|_| Sep38Error::AuthFailed)?;
+        let quote_server = &anchor_config.general_info.anchor_quote_server;
+        // Unwrap the Option or provide a default value
+        let quote_server_str = quote_server.as_ref().map_or_else(
+            || "".to_string(),  // Default value if None
+            |s| s.to_string()   // Use the string value if Some
+        );
+        let mut request = client
+            .get(&format!("{}/price", quote_server_str))
             .query(&[("sell_asset", sell_asset)])
             .query(&[("buy_asset", buy_asset)])
             .query(&[("context", context)]);
-        
+
         if let Some(amount) = sell_amount {
             request = request.query(&[("sell_amount", amount)]);
         }
-        
+
         if let Some(amount) = buy_amount {
             request = request.query(&[("buy_amount", amount)]);
         }
-        
+
         if let Some(method) = sell_delivery_method {
             request = request.query(&[("sell_delivery_method", method)]);
         }
-        
+
         if let Some(method) = buy_delivery_method {
             request = request.query(&[("buy_delivery_method", method)]);
         }
-        
+
         if let Some(code) = country_code {
             request = request.query(&[("country_code", code)]);
         }
-        
+
         let response = request.send().await?;
-        
+
         if response.status().is_success() {
             Ok(response.json().await?)
         } else {
@@ -329,35 +351,10 @@ impl Sep38Service {
         }
     }
 
-    // 4. GET /exchange_rate
-    pub async fn get_exchange_rate(
-        &self,
-        sell_asset: &str,
-        buy_asset: &str,
-        sell_amount: Option<&str>,
-        buy_amount: Option<&str>,
-        sell_delivery_method: Option<&str>,
-        buy_delivery_method: Option<&str>,
-        country_code: Option<&str>,
-        context: &str,
-    ) -> Result<String, Sep38Error> {
-        let quote = self.get_exchange_fees(
-            sell_asset,
-            buy_asset,
-            sell_amount,
-            buy_amount,
-            sell_delivery_method,
-            buy_delivery_method,
-            country_code,
-            context,
-        ).await?;
-        
-        Ok(quote.price)
-    }
 
     // 5. POST /quote_exchange_price
     pub async fn quote_exchange_price(
-        &self,
+        slug: &str,
         account: &str,
         sell_asset: &str,
         buy_asset: &str,
@@ -369,12 +366,32 @@ impl Sep38Service {
         country_code: Option<&str>,
         context: &str,
     ) -> Result<QuoteResponse, Sep38Error> {
-        let jwt = self.auth_service.authenticate(account, &self.keypair )
-            .await
+        let client = Client::new();
+        let keypair = match generate_keypair() {
+            Ok(kp) => kp,
+            Err(_) => return Err(Sep38Error::Keypairgenerationfailed),
+        };
+        // Get anchor configuration for authentication
+        // Get anchor configuration for authentication
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
             .map_err(|_| Sep38Error::AuthFailed)?;
-            
-        let request = self.client
-            .post(&format!("{}/quote", self.quote_server))
+    
+        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
+        let signing_key = &anchor_config.general_info.signing_key;
+    
+        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+            Ok(token) => token,
+            Err(_) => return Err(Sep38Error::AuthFailed),
+        };
+        let quote_server = &anchor_config.general_info.anchor_quote_server;
+        // Unwrap the Option or provide a default value
+        let quote_server_str = quote_server.as_ref().map_or_else(
+            || "".to_string(),  // Default value if None
+            |s| s.to_string()   // Use the string value if Some
+        );
+
+        let request = client
+            .post(&format!("{}/quote",quote_server_str))
             .bearer_auth(jwt)
             .json(&serde_json::json!({
                 "sell_asset": sell_asset,
@@ -387,16 +404,16 @@ impl Sep38Service {
                 "country_code": country_code,
                 "context": context,
             }));
-        
+
         let response = request.send().await?;
-        
+
         if response.status().is_success() {
             let quote: QuoteResponse = response.json().await?;
-            
+
             // Save to database
             let mut conn = establish_connection().map_err(|e| Sep38Error::DatabaseError(e.to_string()))?;
-            
-        
+
+
 
             let new_quote = NewSep38Quote {
                 original_quote_id: quote.id.clone(),
@@ -419,7 +436,7 @@ impl Sep38Service {
                 context: context.to_string(),
                 transaction_id: None,
             };
-            
+
             diesel::insert_into(sep38_quotes::table)
                 .values(&new_quote)
                 .execute(&mut conn)
@@ -433,17 +450,39 @@ impl Sep38Service {
     }
 
     // 6. GET /quote
-    pub async fn get_quote(&self, account: &str, quote_id: &str) -> Result<QuoteResponse, Sep38Error> {
-        let jwt = self.auth_service.authenticate(account, &self.keypair)
-            .await
-            .map_err(|_| Sep38Error::AuthFailed)?;
-            
-        let response = self.client
-            .get(&format!("{}/quote/{}", self.quote_server, quote_id))
-            .bearer_auth(jwt)
-            .send()
-            .await?;
-        
+    pub async fn get_quote(account: &str, quote_id: &str, slug: &str,) -> Result<QuoteResponse, Sep38Error> {
+        let client = Client::new();
+        // KeyPair::random() returns a Result, so we need to handle it
+        let keypair = match generate_keypair() {
+            Ok(kp) => kp,
+            Err(_) => return Err(Sep38Error::Keypairgenerationfailed),
+        };
+
+         // Get anchor configuration for authentication
+         let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+             .map_err(|_| Sep38Error::AuthFailed)?;
+
+         let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
+         let signing_key = &anchor_config.general_info.signing_key;
+
+         let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+            Ok(token) => token,
+            Err(_) => return Err(Sep38Error::AuthFailed),
+        };
+       
+        let quote_server = &anchor_config.general_info.anchor_quote_server;
+        // Unwrap the Option or provide a default value
+        let quote_server_str = quote_server.as_ref().map_or_else(
+            || "".to_string(),  // Default value if None
+            |s| s.to_string()   // Use the string value if Some
+        );
+
+      let response = client
+          .get(&format!("{}/quote/{}", quote_server_str, quote_id))
+          .bearer_auth(jwt)
+          .send()
+          .await?;
+
         if response.status().is_success() {
             Ok(response.json().await?)
         } else if response.status() == 404 {

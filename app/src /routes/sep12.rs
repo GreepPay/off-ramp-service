@@ -8,13 +8,11 @@ pub mod sep12 {
     use rocket::{
         delete, form::Form, get, http::Status, post, put, response::status, serde::json::Json,
     };
-    use services::sep12::{Sep12Service, Customer, Field};
     #[get("/customer", data = "<form>")]
     pub async fn get_kyc_status<'r>(
         form: Form<Sep12KycStatusForm<'r>>,
-        sep12_service: &rocket::State<Sep12Service>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let customer = get_sep12_kyc_status(form, sep12_service)
+        let customer = get_sep12_kyc_status(form)
             .await
             .map_err(|e| {
                 eprintln!("Error getting SEP-12 KYC status: {:?}", e);
@@ -27,13 +25,12 @@ pub mod sep12 {
     #[put("/customer", data = "<form>")]
     pub async fn create_kyc<'r>(
         form: Form<Sep12CreateKycForm<'r>>,
-        sep12_service: &rocket::State<Sep12Service>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>> {
         // Extract fields and files from form data
         let fields = Vec::new(); // This would be populated from form data
         let files = Vec::new(); // This would be populated from form data
 
-        let customer = create_sep12_kyc(form, fields, files, sep12_service)
+        let customer = create_sep12_kyc(form, fields, files)
             .await
             .map_err(|e| {
                 eprintln!("Error creating SEP-12 KYC: {:?}", e);
@@ -46,13 +43,12 @@ pub mod sep12 {
     #[post("/customer", data = "<form>")]
     pub async fn update_kyc<'r>(
         form: Form<Sep12UpdateKycForm<'r>>,
-        sep12_service: &rocket::State<Sep12Service>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>> {
         // Extract fields and files from form data
         let fields = Vec::new(); // This would be populated from form data
         let files = Vec::new(); // This would be populated from form data
 
-        let customer = update_sep12_kyc(form, fields, files, sep12_service)
+        let customer = update_sep12_kyc(form, fields, files)
             .await
             .map_err(|e| {
                 eprintln!("Error updating SEP-12 KYC: {:?}", e);
@@ -73,9 +69,8 @@ pub mod sep12 {
     #[delete("/customer", data = "<form>")]
     pub async fn delete_customer<'r>(
         form: Form<Sep12DeleteKycForm<'r>>,
-        sep12_service: &rocket::State<Sep12Service>,
     ) -> Result<status::Custom<Json<ApiResponse<()>>>, status::Custom<Json<ApiResponse<()>>>> {
-        delete_sep12_kyc(form, sep12_service)
+        delete_sep12_kyc(form)
             .await
             .map_err(|e| {
                 eprintln!("Error deleting SEP-12 KYC: {:?}", e);
@@ -88,9 +83,8 @@ pub mod sep12 {
     #[get("/customer/verification", data = "<form>")]
     pub async fn get_required_verification<'r>(
         form: Form<Sep12RequiredVerificationForm<'r>>,
-        sep12_service: &rocket::State<Sep12Service>,
     ) -> Result<status::Custom<Json<ApiResponse<Vec<Field>>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let fields = get_sep12_required_verification(form, sep12_service)
+        let fields = get_sep12_required_verification(form)
             .await
             .map_err(|e| {
                 eprintln!("Error getting required verification: {:?}", e);

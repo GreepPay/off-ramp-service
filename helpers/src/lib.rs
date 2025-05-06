@@ -5,5 +5,5 @@
 
 
 pub mod stellartoml;
-
-
+pub mod auth;
+pub mod keypair;

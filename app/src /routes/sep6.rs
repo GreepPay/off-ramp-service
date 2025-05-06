@@ -8,14 +8,12 @@ pub mod sep6 {
     use rocket::{
         form::Form, get, http::Status, response::status, serde::json::Json,
     };
-    use services::sep6::{Sep6Service, WithdrawResponse};
 
     #[get("/withdraw", data = "<form>")]
     pub async fn withdraw<'r>(
         form: Form<Sep6WithdrawForm<'r>>,
-        sep6_service: &rocket::State<Sep6Service>,
     ) -> Result<status::Custom<Json<ApiResponse<WithdrawResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let response = get_sep6_withdraw(form, sep6_service)
+        let response = get_sep6_withdraw(form)
             .await
             .map_err(|e| {
                 eprintln!("Error getting withdrawal info: {:?}", e);
@@ -28,9 +26,8 @@ pub mod sep6 {
     #[get("/withdraw-exchange", data = "<form>")]
     pub async fn withdraw_exchange<'r>(
         form: Form<Sep6WithdrawExchangeForm<'r>>,
-        sep6_service: &rocket::State<Sep6Service>,
     ) -> Result<status::Custom<Json<ApiResponse<WithdrawResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let response = get_sep6_withdraw_exchange(form, sep6_service)
+        let response = get_sep6_withdraw_exchange(form)
             .await
             .map_err(|e| {
                 eprintln!("Error getting exchange withdrawal info: {:?}", e);
@@ -43,11 +40,10 @@ pub mod sep6 {
     #[get("/transactions", data = "<form>")]
     pub async fn transactions<'r>(
         form: Form<Sep6TransactionsForm<'r>>,
-        sep6_service: &rocket::State<Sep6Service>,
     ) -> Result<status::Custom<Json<ApiResponse<Vec<Sep6Transaction>>>>, status::Custom<Json<ApiResponse<()>>>> {
         let kind = form.kind.as_ref().map(|k| k.split(',').collect::<Vec<&str>>());
 
-        let transactions = get_sep6_transactions(form, kind, sep6_service)
+        let transactions = get_sep6_transactions(form, kind)
             .await
             .map_err(|e| {
                 eprintln!("Error fetching transactions: {:?}", e);
@@ -60,9 +56,8 @@ pub mod sep6 {
     #[get("/transaction", data = "<form>")]
     pub async fn transaction<'r>(
         form: Form<Sep6TransactionForm<'r>>,
-        sep6_service: &rocket::State<Sep6Service>,
     ) -> Result<status::Custom<Json<ApiResponse<Sep6Transaction>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let transaction = get_sep6_transaction(form, sep6_service)
+        let transaction = get_sep6_transaction(form)
             .await
             .map_err(|e| {
                 eprintln!("Error fetching transaction: {:?}", e);

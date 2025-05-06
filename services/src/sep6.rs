@@ -1,15 +1,19 @@
+pub mod sep6{
 use std::collections::HashMap;
 use bigdecimal::BigDecimal;
 use chrono::Utc;
 use reqwest::Client;
-use stellar_base::KeyPair;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use thiserror::Error;
 use diesel::RunQueryDsl; 
 
-use helpers::stellartoml::AnchorService;
-use crate::sep10::StellarAuth;
+use helpers::{
+    auth::authenticate,
+    keypair::generate_keypair
+};
+
+use crate::common::get_anchor_config_details;
 
 
 use models::{
@@ -50,6 +54,26 @@ pub struct DepositResponse {
     pub fee_fixed: Option<f64>,
     pub fee_percent: Option<f64>,
     pub extra_info: Option<ExtraInfo>,
+}
+#[derive(Error, Debug)]
+pub enum KeyPairError {
+    #[error("Generation failed")]
+    GenerationFailed,
+
+    #[error("Invalid key")]
+    InvalidKey,
+
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
+
+    #[error("Deserialization error: {0}")]
+    DeserializationError(String),
+
+    #[error("Invalid format")]
+    InvalidFormat,
+
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -150,34 +174,21 @@ pub struct Features {
     pub claimable_balances: bool,
 }
 
-pub struct Sep6Service {
-    client: Client,
-    auth_service: StellarAuth,
-    anchor_service: AnchorService,
-    keypair: KeyPair,
-}
-
-impl Sep6Service {
-    pub fn new(auth_service: StellarAuth, anchor_service: AnchorService, keypair: KeyPair) -> Self {
-        Self {
-            client: Client::new(),
-            auth_service,
-            anchor_service,
-            keypair,
-        }
-    }
 
     // 1. GET /info
-    pub async fn get_anchor_info(&self, slug: &str) -> Result<InfoResponse, Sep6Error> {
-        let anchor_config = match self.anchor_service.get_anchor(slug).await {
-            Ok(config) => config,
-            Err(_) => return Err(Sep6Error::AnchorNotSupported),
-        };
-        let transfer_server = anchor_config.transfer_server
-            .ok_or(Sep6Error::AnchorNotSupported)?;
+    pub async fn get_anchor_info( slug: &str) -> Result<InfoResponse, Sep6Error> {
+        let client = Client::new();
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+            .map_err(|_| Sep6Error::AuthFailed)?;
+        let transfer_server = &anchor_config.general_info.transfer_server;
+        // Unwrap the Option or provide a default value
+        let transfer_server_str = transfer_server.as_ref().map_or_else(
+            || "".to_string(),  // Default value if None
+            |s| s.to_string()   // Use the string value if Some
+        );
 
-        let url = format!("{}/info", transfer_server);
-        let response = self.client.get(&url).send().await?;
+        let url = format!("{}/info", transfer_server_str);
+        let response = client.get(&url).send().await?;
 
         if response.status().is_success() {
             Ok(response.json().await?)
@@ -187,8 +198,7 @@ impl Sep6Service {
     }
 
     // 2. GET /transactions
-    pub async fn get_transactions(
-        &self,
+    pub async fn get_transactions(    
         slug: &str,
         account: &str,
         asset_code: Option<&str>,
@@ -197,19 +207,31 @@ impl Sep6Service {
         kind: Option<Vec<&str>>,
         paging_id: Option<&str>,
     ) -> Result<Vec<Sep6Transaction>, Sep6Error> {
-        let anchor_config = match self.anchor_service.get_anchor(slug).await {
-            Ok(config) => config,
-            Err(_) => return Err(Sep6Error::AnchorNotSupported),
-        };
-        let transfer_server = anchor_config.transfer_server
-            .ok_or(Sep6Error::AnchorNotSupported)?;
-
-        let jwt = self.auth_service.authenticate(account, &self.keypair )
-            .await
+        let client = Client::new();
+      
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
             .map_err(|_| Sep6Error::AuthFailed)?;
+        let transfer_server = &anchor_config.general_info.transfer_server;
+        // Unwrap the Option or provide a default value
+        let transfer_server_str = transfer_server.as_ref().map_or_else(
+            || "".to_string(),  // Default value if None
+            |s| s.to_string()   // Use the string value if Some
+        );
+        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
+        let signing_key = &anchor_config.general_info.signing_key;
+    
+        let keypair = match generate_keypair() {
+            Ok(kp) => kp,
+            Err(_) => return Err(Sep6Error::AuthFailed),
+        };
 
-        let mut request = self.client
-            .get(&format!("{}/transactions", transfer_server))
+        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+            Ok(token) => token,
+            Err(_) => return Err(Sep6Error::AuthFailed),
+        };
+
+        let mut request = client
+            .get(&format!("{}/transactions",  transfer_server_str))
             .bearer_auth(jwt);
 
         if let Some(code) = asset_code {
@@ -301,26 +323,37 @@ impl Sep6Service {
 
     // 3. GET /transaction
     pub async fn get_transaction(
-        &self,
+      
         slug: &str,
         account: &str,
         id: Option<&str>,
         stellar_transaction_id: Option<&str>,
         external_transaction_id: Option<&str>,
     ) -> Result<Sep6Transaction, Sep6Error> {
-        let anchor_config = match self.anchor_service.get_anchor(slug).await {
-            Ok(config) => config,
-            Err(_) => return Err(Sep6Error::AnchorNotSupported),
-        };
-        let transfer_server = anchor_config.transfer_server
-            .ok_or(Sep6Error::AnchorNotSupported)?;
-
-        let jwt = self.auth_service.authenticate(account, &self.keypair )
-            .await
+        let client = Client::new();
+        let keypair = match generate_keypair() {
+            Ok(kp) => kp,
+            Err(_) => return Err(Sep6Error::AuthFailed),
+        };//trying to use keypair error, buggy, will be back
+        
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
             .map_err(|_| Sep6Error::AuthFailed)?;
+        let transfer_server = &anchor_config.general_info.transfer_server;
+        // Unwrap the Option or provide a default value
+        let transfer_server_str = transfer_server.as_ref().map_or_else(
+            || "".to_string(),  // Default value if None
+            |s| s.to_string()   // Use the string value if Some
+        );
+        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
+        let signing_key = &anchor_config.general_info.signing_key;
+    
+        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+            Ok(token) => token,
+            Err(_) => return Err(Sep6Error::AuthFailed),
+        };
 
-        let mut request = self.client
-            .get(&format!("{}/transaction", transfer_server))
+        let mut request = client
+            .get(&format!("{}/transaction", transfer_server_str))
             .bearer_auth(jwt);
 
         if let Some(tx_id) = id {
@@ -399,7 +432,7 @@ impl Sep6Service {
 
     // 4. GET /withdraw-exchange
     pub async fn get_withdraw_exchange(
-        &self,
+   
         slug: &str,
         account: &str,
         source_asset: &str,
@@ -413,19 +446,30 @@ impl Sep6Service {
         refund_memo: Option<&str>,
         refund_memo_type: Option<&str>,
     ) -> Result<WithdrawResponse, Sep6Error> {
-        let anchor_config = match self.anchor_service.get_anchor(slug).await {
-            Ok(config) => config,
-            Err(_) => return Err(Sep6Error::AnchorNotSupported),
-        };
-        let transfer_server = anchor_config.transfer_server
-            .ok_or(Sep6Error::AnchorNotSupported)?;
-
-        let jwt = self.auth_service.authenticate(account, &self.keypair )
-            .await
+        let client = Client::new();
+        let keypair = match generate_keypair() {
+            Ok(kp) => kp,
+            Err(_) => return Err(Sep6Error::AuthFailed),
+        };//trying to use keypair error, buggy, will be back
+        
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
             .map_err(|_| Sep6Error::AuthFailed)?;
+        let transfer_server = &anchor_config.general_info.transfer_server;
+        // Unwrap the Option or provide a default value
+        let transfer_server_str = transfer_server.as_ref().map_or_else(
+            || "".to_string(),  // Default value if None
+            |s| s.to_string()   // Use the string value if Some
+        );
+        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
+        let signing_key = &anchor_config.general_info.signing_key;
+    
+        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+            Ok(token) => token,
+            Err(_) => return Err(Sep6Error::AuthFailed),
+        };
 
-        let mut request = self.client
-            .get(&format!("{}/withdraw-exchange", transfer_server))
+        let mut request = client
+            .get(&format!("{}/withdraw-exchange", transfer_server_str))
             .bearer_auth(jwt)
             .query(&[
                 ("source_asset", source_asset),
@@ -520,7 +564,6 @@ impl Sep6Service {
 
     // 5. GET /withdraw
     pub async fn get_withdraw(
-        &self,
         slug: &str,
         account: &str,
         asset_code: &str,
@@ -532,19 +575,29 @@ impl Sep6Service {
         refund_memo: Option<&str>,
         refund_memo_type: Option<&str>,
     ) -> Result<WithdrawResponse, Sep6Error> {
-        let anchor_config = match self.anchor_service.get_anchor(slug).await {
-            Ok(config) => config,
-            Err(_) => return Err(Sep6Error::AnchorNotSupported),
+        let client = Client::new();
+        let keypair = match generate_keypair() {
+            Ok(kp) => kp,
+            Err(_) => return Err(Sep6Error::AuthFailed),
         };
-        let transfer_server = anchor_config.transfer_server
-            .ok_or(Sep6Error::AnchorNotSupported)?;
-
-        let jwt = self.auth_service.authenticate(account, &self.keypair )
-            .await
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
             .map_err(|_| Sep6Error::AuthFailed)?;
+        let transfer_server = &anchor_config.general_info.transfer_server;
+        // Unwrap the Option or provide a default value
+        let transfer_server_str = transfer_server.as_ref().map_or_else(
+            || "".to_string(),  // Default value if None
+            |s| s.to_string()   // Use the string value if Some
+        );
+        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
+        let signing_key = &anchor_config.general_info.signing_key;
+    
+        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account,&keypair).await {
+            Ok(token) => token,
+            Err(_) => return Err(Sep6Error::AuthFailed),
+        };
 
-        let mut request = self.client
-            .get(&format!("{}/withdraw", transfer_server))
+        let mut request = client
+            .get(&format!("{}/withdraw",transfer_server_str))
             .bearer_auth(jwt)
             .query(&[
                 ("asset_code", asset_code),

@@ -2,14 +2,14 @@
         use controllers::api::api::{failure, success, ApiResponse};
         use controllers::sep38::{get_sep38_info, get_sep38_price, create_sep38_quote, get_sep38_quote};
         use rocket::{get, post, form::Form, http::Status, response::status, serde::json::Json};
-        use controllers::sep38::form::form::{Sep38PriceForm, Sep38QuoteForm, Sep38GetQuoteForm};
+        use controllers::sep38::form::form::{Sep38PriceForm, Sep38QuoteForm, Sep38GetQuoteForm, Sep38InfoForm};
         use services::sep38::{AssetInfo, PriceResponse, QuoteResponse, Sep38Service};
 
         #[get("/info")]
         pub async fn get_sep38_info_route(
-            sep38_service: &rocket::State<Sep38Service>,
+              form: Form<Sep38InfoForm<'r>>,
         ) -> Result<status::Custom<Json<ApiResponse<Vec<AssetInfo>>>>, status::Custom<Json<ApiResponse<()>>>> {
-            let assets_info = get_sep38_info(sep38_service)
+            let assets_info = get_sep38_info( form)
                 .await
                 .map_err(|e| {
                     eprintln!("Error getting SEP-38 info: {:?}", e);
@@ -22,9 +22,8 @@
         #[get("/price", data = "<form>")]
         pub async fn get_sep38_price_route<'r>(
             form: Form<Sep38PriceForm<'r>>,
-            sep38_service: &rocket::State<Sep38Service>,
         ) -> Result<status::Custom<Json<ApiResponse<PriceResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
-            let price_response = get_sep38_price(form, sep38_service)
+            let price_response = get_sep38_price(form)
                 .await
                 .map_err(|e| {
                     eprintln!("Error getting SEP-38 price: {:?}", e);
@@ -37,9 +36,8 @@
         #[post("/quote", data = "<form>")]
         pub async fn create_sep38_quote_route<'r>(
             form: Form<Sep38QuoteForm<'r>>,
-            sep38_service: &rocket::State<Sep38Service>,
         ) -> Result<status::Custom<Json<ApiResponse<QuoteResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
-            let quote_response = create_sep38_quote(form, sep38_service)
+            let quote_response = create_sep38_quote(form)
                 .await
                 .map_err(|e| {
                     eprintln!("Error creating SEP-38 quote: {:?}", e);
@@ -52,9 +50,8 @@
         #[get("/quote", data = "<form>")]
         pub async fn get_sep38_quote_route<'r>(
             form: Form<Sep38GetQuoteForm<'r>>,
-            sep38_service: &rocket::State<Sep38Service>,
         ) -> Result<status::Custom<Json<ApiResponse<QuoteResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
-            let quote_response = get_sep38_quote(form, sep38_service)
+            let quote_response = get_sep38_quote(form)
                 .await
                 .map_err(|e| {
                     eprintln!("Error getting SEP-38 quote: {:?}", e);
