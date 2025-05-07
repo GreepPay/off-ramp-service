@@ -1,11 +1,19 @@
 use form::form::{ Sep6WithdrawForm, Sep6WithdrawExchangeForm, Sep6TransactionsForm, Sep6TransactionForm, Sep6InfoForm};
 use rocket::form::Form;
-use services::sep6::sep6::{get_anchor_info,get_transactions,get_transaction,get_withdraw_exchange, get_withdraw, WithdrawResponse};
+use services::sep6::sep6::{get_anchor_info, get_transactions, get_transaction, get_withdraw_exchange, get_withdraw, WithdrawResponse, InfoResponse};
 
 
 
 
 pub mod form;
+
+pub async fn get_sep6_info(
+    data: Form<Sep6InfoForm<'_>>,
+) -> Result<InfoResponse, Box<dyn std::error::Error>> {
+    Ok(get_anchor_info(
+        data.slug,
+    ).await?)
+}
 
 pub async fn get_sep6_withdraw(
     data: Form<Sep6WithdrawForm<'_>>,
