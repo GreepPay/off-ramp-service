@@ -1,6 +1,7 @@
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use stellar_base::{transaction::TransactionEnvelope, KeyPair, Network, Operation};
 use stellar_sdk::Keypair;
+use crate::stellartoml::AnchorService;
 use chrono::Utc;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -49,17 +50,25 @@ struct TokenResponse {
 }
 
 pub async fn authenticate(
-    web_auth_endpoint: &str,
-    signing_key: &str,
+    anchor_service: &AnchorService,
     slug: &str,
     account_id: &str,
     keypair: &KeyPair
 ) -> Result<String, AuthError> {
+    let anchor_config = anchor_service.get_anchor_config_details(slug).await
+           .map_err(|e| AuthError::ConfigError(e.to_string()))?;
     let client = Client::new();
-    let network = Network::new_public();
+    let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
+    let signing_key = &anchor_config.general_info.signing_key;
+    let network_passphrase = &anchor_config.general_info.network_passphrase;
+    let network = Network::new(network_passphrase.clone());
+    let home_domain: Option<&str> = anchor_config.documentation
+        .as_ref()  // Gets Option<&DocumentationInfo>
+        .and_then(|doc| doc.org_url.as_ref())  // Gets Option<&String>
+        .map(|s| s.as_str());  // Converts &String to &str
 
-    let challenge = get_challenge(&client, web_auth_endpoint, account_id, None).await?;
-    verify_challenge_structure(&challenge, account_id, signing_key, &network, slug)?;
+    let challenge = get_challenge(&client, web_auth_endpoint, account_id, home_domain).await?;
+    verify_challenge_structure(&challenge, account_id, signing_key, &network, home_domain)?;
     let signed_envelope = sign_challenge(&challenge, keypair, &network)?;
     let xdr_base64 = signed_envelope.xdr_base64()
         .map_err(|e| AuthError::XdrError(format!("XDR serialization failed: {}", e)))?;
@@ -115,7 +124,7 @@ fn verify_challenge_structure(
     client_account: &str,
     signing_key: &str,
     network: &Network,
-    slug: &str
+    home_domain: Option<&str>
 ) -> Result<(), AuthError> {
     let envelope = TransactionEnvelope::from_xdr_base64(challenge_xdr)
         .map_err(|e| AuthError::XdrError(format!("XDR parsing failed: {}", e)))?;
@@ -166,9 +175,9 @@ fn verify_challenge_structure(
             ));
         }
 
-        if op.data_name() != format!("{} auth", slug) {
+        if op.data_name() != format!("{} auth", home_domain.unwrap_or("unknown")) {
             return Err(AuthError::ChallengeError(
-                format!("First operation key must be '{} auth'", slug)
+                format!("First operation key must be '{} auth'", home_domain.unwrap_or("unknown"))
             ));
         }
 

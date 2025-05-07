@@ -217,15 +217,12 @@ pub struct Features {
             || "".to_string(),  // Default value if None
             |s| s.to_string()   // Use the string value if Some
         );
-        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-        let signing_key = &anchor_config.general_info.signing_key;
     
         let keypair = match generate_keypair() {
             Ok(kp) => kp,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
-
-        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
             Ok(token) => token,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
@@ -344,10 +341,8 @@ pub struct Features {
             || "".to_string(),  // Default value if None
             |s| s.to_string()   // Use the string value if Some
         );
-        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-        let signing_key = &anchor_config.general_info.signing_key;
     
-        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
             Ok(token) => token,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
@@ -460,10 +455,7 @@ pub struct Features {
             || "".to_string(),  // Default value if None
             |s| s.to_string()   // Use the string value if Some
         );
-        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-        let signing_key = &anchor_config.general_info.signing_key;
-    
-        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await{
             Ok(token) => token,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
@@ -588,10 +580,7 @@ pub struct Features {
             || "".to_string(),  // Default value if None
             |s| s.to_string()   // Use the string value if Some
         );
-        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-        let signing_key = &anchor_config.general_info.signing_key;
-    
-        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account,&keypair).await {
+        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
             Ok(token) => token,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };

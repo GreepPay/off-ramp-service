@@ -99,10 +99,7 @@ pub async fn get_required_verification(
     let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
         .map_err(|_| Sep12Error::AuthFailed)?;
 
-    let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-    let signing_key = &anchor_config.general_info.signing_key;
-
-    let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+    let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
         Ok(token) => token,
         Err(_) => return Err(Sep12Error::Keypairgenerationfailed),
     };
@@ -155,10 +152,8 @@ pub async fn get_account_kyc(
     let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
         .map_err(|_| Sep12Error::AuthFailed)?;
 
-    let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-    let signing_key = &anchor_config.general_info.signing_key;
 
-    let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+    let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
         Ok(token) => token,
         Err(_) => return Err(Sep12Error::Keypairgenerationfailed),
     };
@@ -211,10 +206,7 @@ pub async fn create_account_kyc(
     let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
         .map_err(|_| Sep12Error::AuthFailed)?;
 
-    let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-    let signing_key = &anchor_config.general_info.signing_key;
-
-    let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+    let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
         Ok(token) => token,
         Err(_) => return Err(Sep12Error::Keypairgenerationfailed),
     };
@@ -339,10 +331,7 @@ pub async fn update_account_kyc(
     let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
         .map_err(|_| Sep12Error::AuthFailed)?;
 
-    let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-    let signing_key = &anchor_config.general_info.signing_key;
-
-    let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+    let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
         Ok(token) => token,
         Err(_) => return Err(Sep12Error::Keypairgenerationfailed),
     };
@@ -440,10 +429,8 @@ pub async fn delete_account_kyc(
     let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
         .map_err(|_| Sep12Error::AuthFailed)?;
 
-    let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-    let signing_key = &anchor_config.general_info.signing_key;
-
-    let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+ 
+    let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
         Ok(token) => token,
         Err(_) => return Err(Sep12Error::Keypairgenerationfailed),
     };

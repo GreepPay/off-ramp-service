@@ -376,10 +376,8 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
         let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
             .map_err(|_| Sep38Error::AuthFailed)?;
     
-        let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-        let signing_key = &anchor_config.general_info.signing_key;
     
-        let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
             Ok(token) => token,
             Err(_) => return Err(Sep38Error::AuthFailed),
         };
@@ -462,10 +460,8 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
          let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
              .map_err(|_| Sep38Error::AuthFailed)?;
 
-         let web_auth_endpoint = &anchor_config.general_info.web_auth_endpoint;
-         let signing_key = &anchor_config.general_info.signing_key;
 
-         let jwt = match authenticate(web_auth_endpoint,signing_key, slug, account, &keypair).await {
+         let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
             Ok(token) => token,
             Err(_) => return Err(Sep38Error::AuthFailed),
         };
