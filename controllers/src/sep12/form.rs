@@ -1,43 +1,63 @@
 pub mod form {
-    use rocket::form::FromForm;
 
+    use rocket::serde::{Deserialize, Serialize,};
+    use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
-    #[derive(FromForm)]
-    pub struct Sep12KycStatusForm<'r> {
-        pub slug: &'r str,
-        pub account: &'r str,
-        pub memo: Option<&'r str>,
-        pub customer_type: Option<&'r str>,
-    }
-
-    #[derive(FromForm)]
-    pub struct Sep12CreateKycForm<'r> {
-       pub slug: &'r str,
-        pub account: &'r str,
-        pub memo: Option<&'r str>,
-        pub customer_type: &'r str,
-       
-    }
-
-    #[derive(FromForm)]
-    pub struct Sep12UpdateKycForm<'r> {
-        pub slug: &'r str,
-        pub customer_id: &'r str,
-     
+    #[derive(Deserialize, Serialize)]
+    #[serde(crate = "rocket::serde")]
+    pub struct Sep12KycStatusForm {
+        pub slug: String,
+        pub account: String,
+        #[serde(default)]
+        pub memo: Option<String>,
+        #[serde(default)]
+        pub customer_type: Option<String>,
     }
     
-    #[derive(FromForm)]
-    pub struct Sep12DeleteKycForm<'r> {
-       pub slug: &'r str,
-        pub account: &'r str,
-        pub memo: Option<&'r str>,
+    #[derive(Deserialize, Serialize)]
+    #[serde(crate = "rocket::serde")]
+    pub struct Sep12CreateKycForm {
+        pub slug: String,
+        pub account: String,
+        #[serde(default)]
+        pub memo: Option<String>,
+        pub customer_type: String,
     }
+    
+    #[derive(Deserialize, Serialize)]
+    #[serde(crate = "rocket::serde")]
+    pub struct Sep12UpdateKycForm {
+        pub slug: String,
+        pub customer_id: String,
+    }
+    
+    #[derive(Deserialize, Serialize)]
+    #[serde(crate = "rocket::serde")]
+    pub struct Sep12DeleteKycForm {
+        pub slug: String,
+        pub account: String,
+        #[serde(default)]
+        pub memo: Option<String>,
+    }
+    
 
-    #[derive(FromForm)]
-    pub struct Sep12RequiredVerificationForm<'r> {
-        pub slug: &'r str,
-        pub account: &'r str,
-        pub memo: Option<&'r str>,
-        pub customer_type: Option<&'r str>,
+    #[derive(SerdeDeserialize, SerdeSerialize)]
+    #[serde(crate = "rocket::serde")]
+    pub struct Sep12FileField {
+        pub name: String,
+        #[serde(rename = "file")]
+        pub data: Vec<u8>,  // For binary file data in JSON (base64 encoded)
+        #[serde(rename = "content_type")]
+        pub content_type: String,
     }
+    
+    #[derive(SerdeDeserialize, SerdeSerialize)]
+    #[serde(crate = "rocket::serde")]
+    pub struct Sep12FieldsAndFiles {
+        #[serde(rename = "field")]
+        pub fields: Vec<(String, String)>,
+        #[serde(rename = "field")]
+        pub files: Vec<Sep12FileField>,
+    }
+    
 }

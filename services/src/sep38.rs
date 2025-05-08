@@ -175,10 +175,10 @@ pub struct QuoteRequest {
 
 
 // 1. GET /exchange_info
-pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Error> {
+pub async fn get_exchange_info( slug: String,) -> Result<Vec<AssetInfo>, Sep38Error> {
     let client = Client::new();
     
-    let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+    let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), &slug).await
         .map_err(|_| Sep38Error::AuthFailed)?;
     let quote_server = &anchor_config.general_info.anchor_quote_server;
     // Unwrap the Option or provide a default value
@@ -227,7 +227,7 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
 
     // 2. GET /exchange_prices
     pub async fn get_exchange_prices(
-        slug: &str,
+        slug: String,
         sell_asset: String,
         buy_asset: String,
         sell_amount: String,
@@ -239,7 +239,7 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
     ) -> Result<PriceResponse, Sep38Error> {
         let client = Client::new();
         
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), &slug).await
             .map_err(|_| Sep38Error::AuthFailed)?;
         let quote_server = &anchor_config.general_info.anchor_quote_server;
         // Unwrap the Option or provide a default value
@@ -297,7 +297,7 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
 
     // 3. GET /exchange_fees
     pub async fn get_exchange_fees(
-      slug: &str,
+        slug:  String,
         sell_asset: &str,
         buy_asset: &str,
         sell_amount: Option<&str>,
@@ -308,7 +308,7 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
         context: &str,
     ) -> Result<QuoteResponse, Sep38Error> {
         let client = Client::new();
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), &slug).await
             .map_err(|_| Sep38Error::AuthFailed)?;
         let quote_server = &anchor_config.general_info.anchor_quote_server;
         // Unwrap the Option or provide a default value
@@ -354,17 +354,17 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
 
     // 5. POST /quote_exchange_price
     pub async fn quote_exchange_price(
-        slug: &str,
-        account: &str,
-        sell_asset: &str,
-        buy_asset: &str,
-        sell_amount: Option<&str>,
-        buy_amount: Option<&str>,
-        expire_after: Option<&str>,
-        sell_delivery_method: Option<&str>,
-        buy_delivery_method: Option<&str>,
-        country_code: Option<&str>,
-        context: &str,
+        slug: String,
+        account: String,
+        sell_asset: String,
+        buy_asset: String,
+        sell_amount: Option<String> ,
+        buy_amount: Option<String> ,
+        expire_after: Option<String> ,
+        sell_delivery_method: Option<String> ,
+        buy_delivery_method: Option<String> ,
+        country_code: Option<String> ,
+        context: String,
     ) -> Result<QuoteResponse, Sep38Error> {
         let client = Client::new();
         let keypair = match generate_keypair() {
@@ -373,11 +373,11 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
         };
         // Get anchor configuration for authentication
         // Get anchor configuration for authentication
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), &slug).await
             .map_err(|_| Sep38Error::AuthFailed)?;
     
     
-        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
+        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),&slug, &account, &keypair).await {
             Ok(token) => token,
             Err(_) => return Err(Sep38Error::AuthFailed),
         };
@@ -448,7 +448,7 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
     }
 
     // 6. GET /quote
-    pub async fn get_quote(account: &str, quote_id: &str, slug: &str,) -> Result<QuoteResponse, Sep38Error> {
+    pub async fn get_quote(account: String, quote_id: String, slug: String,) -> Result<QuoteResponse, Sep38Error> {
         let client = Client::new();
         // KeyPair::random() returns a Result, so we need to handle it
         let keypair = match generate_keypair() {
@@ -457,11 +457,11 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
         };
 
          // Get anchor configuration for authentication
-         let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
+         let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), &slug).await
              .map_err(|_| Sep38Error::AuthFailed)?;
 
 
-         let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
+         let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),&slug,&account, &keypair).await {
             Ok(token) => token,
             Err(_) => return Err(Sep38Error::AuthFailed),
         };
@@ -487,4 +487,5 @@ pub async fn get_exchange_info( slug: &str,) -> Result<Vec<AssetInfo>, Sep38Erro
             Err(Sep38Error::InvalidRequest(format!("Status: {}", response.status())))
         }
     }
+
 }

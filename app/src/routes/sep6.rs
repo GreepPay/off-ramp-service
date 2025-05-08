@@ -8,6 +8,7 @@ pub mod sep6 {
     use rocket::{
         form::Form, get, http::Status, response::status, serde::json::Json,
     };
+    use services::sep6::sep6::WithdrawResponse;
 
     #[get("/withdraw", data = "<form>")]
     pub async fn withdraw<'r>(

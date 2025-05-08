@@ -193,8 +193,8 @@ pub async fn create_account_kyc(
     account: &str,
     memo: Option<&str>,
     customer_type: &str,
-    fields: Vec<(&str, &str)>,
-    files: Vec<(&str, Vec<u8>, &str)>,
+    fields: Vec<(String, String)>,
+    files: Vec<(String, Vec<u8>, String)>,
 ) -> Result<Customer, Sep12Error> {
     let client = reqwest::Client::new();
     
@@ -305,8 +305,8 @@ pub async fn create_account_kyc(
 pub async fn update_account_kyc(
     slug: &str,
     customer_id: &str,
-    fields: Vec<(&str, &str)>,
-    files: Vec<(&str, Vec<u8>, &str)>,
+    fields: Vec<(String, String)>,
+    files: Vec<(String, Vec<u8>, String)>,
 ) -> Result<Customer, Sep12Error> {
     let client = reqwest::Client::new();
     

@@ -12,10 +12,10 @@ fn rocket() -> _ {
         .mount(
             "/v1/exchange",
             routes![
-                routes::sep38::sep38::get_sep38_info_route,
-                routes::sep38::sep38::get_sep38_price_route,
-                routes::sep38::sep38::create_sep38_quote_route,
-                routes::sep38::sep38::get_sep38_quote_route,
+                routes::sep38::routes::get_sep38_info_route,
+                routes::sep38::routes::get_sep38_price_route,
+                routes::sep38::routes::create_sep38_quote_route,
+                routes::sep38::routes::get_sep38_quote_route,
             ],
         )
         .mount(
@@ -29,10 +29,10 @@ fn rocket() -> _ {
         .mount(
             "/v1/kyc",
             routes![ 
-                routes::sep6::sep6::get_kyc_status,
-                routes::sep6::sep6::create_kyc,
-                routes::sep6::sep6::update_kyc,
-                routes::sep6::sep6::delete_customer,],
+                routes::sep12::sep12::get_kyc_status,
+                routes::sep12::sep12::create_kyc,
+                routes::sep12::sep12::update_kyc,
+                routes::sep12::sep12::delete_customer,],
         )
     
 }

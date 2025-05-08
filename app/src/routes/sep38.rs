@@ -1,13 +1,13 @@
     pub mod routes {
         use controllers::api::api::{failure, success, ApiResponse};
         use controllers::sep38::{get_sep38_info, get_sep38_price, create_sep38_quote, get_sep38_quote};
-        use rocket::{get, post, form::Form, http::Status, response::status, serde::json::Json};
+        use rocket::{get, post, http::Status, response::status, serde::json::Json};
         use controllers::sep38::form::form::{Sep38PriceForm, Sep38QuoteForm, Sep38GetQuoteForm, Sep38InfoForm};
-        use services::sep38::{AssetInfo, PriceResponse, QuoteResponse, Sep38Service};
+        use services::sep38::sep38::{AssetInfo, PriceResponse, QuoteResponse};
 
-        #[get("/info")]
+        #[get("/info", data = "<form>")]
         pub async fn get_sep38_info_route(
-              form: Form<Sep38InfoForm<'r>>,
+                form: Json<Sep38InfoForm>,
         ) -> Result<status::Custom<Json<ApiResponse<Vec<AssetInfo>>>>, status::Custom<Json<ApiResponse<()>>>> {
             let assets_info = get_sep38_info( form)
                 .await
@@ -21,7 +21,7 @@
 
         #[get("/price", data = "<form>")]
         pub async fn get_sep38_price_route<'r>(
-            form: Form<Sep38PriceForm<'r>>,
+            form: Json<Sep38PriceForm>,
         ) -> Result<status::Custom<Json<ApiResponse<PriceResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
             let price_response = get_sep38_price(form)
                 .await
@@ -35,7 +35,7 @@
 
         #[post("/quote", data = "<form>")]
         pub async fn create_sep38_quote_route<'r>(
-            form: Form<Sep38QuoteForm<'r>>,
+            form: Json<Sep38QuoteForm>,
         ) -> Result<status::Custom<Json<ApiResponse<QuoteResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
             let quote_response = create_sep38_quote(form)
                 .await
@@ -49,7 +49,7 @@
 
         #[get("/quote", data = "<form>")]
         pub async fn get_sep38_quote_route<'r>(
-            form: Form<Sep38GetQuoteForm<'r>>,
+            form: Json<Sep38GetQuoteForm>,
         ) -> Result<status::Custom<Json<ApiResponse<QuoteResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
             let quote_response = get_sep38_quote(form)
                 .await
