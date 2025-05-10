@@ -2,8 +2,6 @@
 // Helper functions:
 // Exchange Info
 // Exchange Prices
-// Exchange  Fees
-// Exchange rate
 // Quote exchange Price 
 pub mod sep38{
 use bigdecimal::BigDecimal;
@@ -295,64 +293,8 @@ pub async fn get_exchange_info( slug: String,) -> Result<Vec<AssetInfo>, Sep38Er
         }
     }
 
-    // 3. GET /exchange_fees
-    pub async fn get_exchange_fees(
-        slug:  String,
-        sell_asset: &str,
-        buy_asset: &str,
-        sell_amount: Option<&str>,
-        buy_amount: Option<&str>,
-        sell_delivery_method: Option<&str>,
-        buy_delivery_method: Option<&str>,
-        country_code: Option<&str>,
-        context: &str,
-    ) -> Result<QuoteResponse, Sep38Error> {
-        let client = Client::new();
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), &slug).await
-            .map_err(|_| Sep38Error::AuthFailed)?;
-        let quote_server = &anchor_config.general_info.anchor_quote_server;
-        // Unwrap the Option or provide a default value
-        let quote_server_str = quote_server.as_ref().map_or_else(
-            || "".to_string(),  // Default value if None
-            |s| s.to_string()   // Use the string value if Some
-        );
-        let mut request = client
-            .get(&format!("{}/price", quote_server_str))
-            .query(&[("sell_asset", sell_asset)])
-            .query(&[("buy_asset", buy_asset)])
-            .query(&[("context", context)]);
 
-        if let Some(amount) = sell_amount {
-            request = request.query(&[("sell_amount", amount)]);
-        }
-
-        if let Some(amount) = buy_amount {
-            request = request.query(&[("buy_amount", amount)]);
-        }
-
-        if let Some(method) = sell_delivery_method {
-            request = request.query(&[("sell_delivery_method", method)]);
-        }
-
-        if let Some(method) = buy_delivery_method {
-            request = request.query(&[("buy_delivery_method", method)]);
-        }
-
-        if let Some(code) = country_code {
-            request = request.query(&[("country_code", code)]);
-        }
-
-        let response = request.send().await?;
-
-        if response.status().is_success() {
-            Ok(response.json().await?)
-        } else {
-            Err(Sep38Error::InvalidRequest(format!("Status: {}", response.status())))
-        }
-    }
-
-
-    // 5. POST /quote_exchange_price
+    // 4. POST /quote_exchange_price
     pub async fn quote_exchange_price(
         slug: String,
         account: String,
@@ -411,8 +353,6 @@ pub async fn get_exchange_info( slug: String,) -> Result<Vec<AssetInfo>, Sep38Er
             // Save to database
             let mut conn = establish_connection().map_err(|e| Sep38Error::DatabaseError(e.to_string()))?;
 
-
-
             let new_quote = NewSep38Quote {
                 original_quote_id: quote.id.clone(),
                 sell_asset: quote.sell_asset.clone(),
@@ -447,7 +387,7 @@ pub async fn get_exchange_info( slug: String,) -> Result<Vec<AssetInfo>, Sep38Er
         }
     }
 
-    // 6. GET /quote
+    // 5. GET /quote
     pub async fn get_quote(account: String, quote_id: String, slug: String,) -> Result<QuoteResponse, Sep38Error> {
         let client = Client::new();
         // KeyPair::random() returns a Result, so we need to handle it
