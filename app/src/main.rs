@@ -22,6 +22,7 @@ fn rocket() -> _ {
             "/v1/withdrawl",
             routes![ routes::sep6::sep6::withdraw,
                 routes::sep6::sep6::withdraw_exchange,
+                routes::sep6::sep6::anchorinfo,
                 routes::sep6::sep6::transactions,
                 routes::sep6::sep6::transaction,],
         )
