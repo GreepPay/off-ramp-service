@@ -5,21 +5,15 @@ use app::routes::info;
 use app::routes::kyc;
 use app::routes::withdraw;
 
-
-
 #[launch]
 async fn rocket() -> _ {
     // Load env
     dotenv::dotenv().ok();
 
- 
     rocket::build()
         .mount(
             "/v1/auth",
-            routes![
-                auth::get_challenge,
-                auth::get_jwt_token,
-            ],
+            routes![auth::get_challenge, auth::get_jwt_token,],
         )
         .mount(
             "/v1/info",
@@ -47,10 +41,9 @@ async fn rocket() -> _ {
             "/v1/withdraw",
             routes![
                 withdraw::withdraw,
-               withdraw::withdraw_exchange,
+                withdraw::withdraw_exchange,
                 withdraw::get_transactions,
                 withdraw::get_transaction,
-
             ],
         )
 }
