@@ -1,7 +1,8 @@
 pub mod form {
-    use rocket::form::FromForm;
+    use serde::{Deserialize, Serialize};
 
-    #[derive(FromForm)]
+    #[derive(Deserialize, Serialize)]
+    #[serde(crate = "rocket::serde")]
     pub struct Sep6WithdrawForm<'r> {
         pub slug: &'r str,
         pub account: &'r str,
@@ -15,12 +16,14 @@ pub mod form {
         pub refund_memo_type: Option<&'r str>,
     }
 
-    #[derive(FromForm)]
+    #[derive(Deserialize, Serialize)]
+    #[serde(crate = "rocket::serde")]
     pub struct Sep6InfoForm<'r> {
         pub slug: &'r str,
     }
 
-    #[derive(FromForm)]
+    #[derive(Deserialize, Serialize)]
+    #[serde(crate = "rocket::serde")]
     pub struct Sep6WithdrawExchangeForm<'r> {
         pub slug: &'r str,
         pub account: &'r str,
@@ -36,19 +39,20 @@ pub mod form {
         pub refund_memo_type: Option<&'r str>,
     }
 
-    #[derive(FromForm)]
+    #[derive(Deserialize, Serialize)]
+    #[serde(crate = "rocket::serde")]
     pub struct Sep6TransactionsForm<'r> {
         pub slug: &'r str,
         pub account: &'r str,
         pub asset_code: Option<&'r str>,
         pub no_older_than: Option<&'r str>,
         pub limit: Option<i32>,
-        #[field(name = "kind")]
-        pub kind: Option<&'r str>, 
+        pub kind: Option<&'r str>,
         pub paging_id: Option<&'r str>,
     }
 
-    #[derive(FromForm)]
+    #[derive(Deserialize, Serialize)]
+    #[serde(crate = "rocket::serde")]
     pub struct Sep6TransactionForm<'r> {
         pub slug: &'r str,
         pub account: &'r str,

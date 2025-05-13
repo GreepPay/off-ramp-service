@@ -100,11 +100,11 @@ pub mod sep6 {
     #[derive(Debug, Serialize, Deserialize)]
     pub struct InfoResponse {
         pub deposit: HashMap<String, DepositAssetInfo>,
-        #[serde(rename = "deposit-exchange")]
-        pub deposit_exchange: HashMap<String, ExchangeAssetInfo>,
+        // #[serde(rename = "deposit-exchange")]
+        // pub deposit_exchange: HashMap<String, ExchangeAssetInfo>,
         pub withdraw: HashMap<String, WithdrawAssetInfo>,
-        #[serde(rename = "withdraw-exchange")]
-        pub withdraw_exchange: HashMap<String, ExchangeAssetInfo>,
+        // #[serde(rename = "withdraw-exchange")]
+        // pub withdraw_exchange: HashMap<String, ExchangeAssetInfo>,
         pub fee: FeeInfo,
         pub transactions: EndpointInfo,
         pub transaction: EndpointInfo,
@@ -120,7 +120,7 @@ pub mod sep6 {
         pub min_amount: Option<f64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub max_amount: Option<f64>,
-        pub funding_methods: Vec<String>,
+        pub funding_methods: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub fee_fixed: Option<f64>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -136,7 +136,7 @@ pub mod sep6 {
         pub min_amount: Option<f64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub max_amount: Option<f64>,
-        pub funding_methods: Vec<String>,
+        pub funding_methods: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub fee_fixed: Option<f64>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -188,7 +188,9 @@ pub mod sep6 {
         let response = client.get(&url).send().await?;
 
         if response.status().is_success() {
-            Ok(response.json().await?)
+            let response_data = response.json().await?;
+
+            Ok(response_data)
         } else {
             Err(Sep6Error::InvalidRequest(format!(
                 "Status: {}",
