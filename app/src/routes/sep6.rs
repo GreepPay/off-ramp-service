@@ -1,14 +1,29 @@
 pub mod sep6 {
     use controllers::{
         api::api::{failure, success, ApiResponse},
-        sep6::{get_sep6_withdraw, get_sep6_withdraw_exchange, get_sep6_transactions, get_sep6_transaction},
-        sep6::form::form::{Sep6TransactionForm, Sep6TransactionsForm, Sep6WithdrawExchangeForm, Sep6WithdrawForm},
+        sep6::{get_sep6_withdraw,get_sep6_info, get_sep6_withdraw_exchange, get_sep6_transactions, get_sep6_transaction},
+        sep6::form::form::{Sep6TransactionForm, Sep6TransactionsForm, Sep6WithdrawExchangeForm, Sep6WithdrawForm, Sep6InfoForm},
     };
     use models::sep6::Sep6Transaction;
     use rocket::{
         form::Form, get, http::Status, response::status, serde::json::Json,
     };
-    use services::sep6::sep6::WithdrawResponse;
+    use services::sep6::sep6::{WithdrawResponse, InfoResponse};
+    
+    
+    #[get("/info", data = "<form>")]
+    pub async fn anchorinfo<'r>(
+        form: Form<Sep6InfoForm<'r>>,
+    ) -> Result<status::Custom<Json<ApiResponse<InfoResponse>>>, status::Custom<Json<ApiResponse<()>>>> {
+        let response = get_sep6_info(form)
+            .await
+            .map_err(|e| {
+                eprintln!("Error getting withdrawal info: {:?}", e);
+                failure("Failed to get withdrawal info", Status::InternalServerError)
+            })?;
+
+        Ok(success("Withdrawal info fetched successfully", response, Status::Ok))
+    }
 
     #[get("/withdraw", data = "<form>")]
     pub async fn withdraw<'r>(
