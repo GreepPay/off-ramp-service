@@ -1,10 +1,10 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use url::Url;
 use std::collections::HashMap;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::sync::RwLock;
+use url::Url;
 
 #[derive(Error, Debug)]
 pub enum AnchorError {
@@ -154,32 +154,56 @@ impl AnchorService {
         }
     }
 
-    pub async fn fetch_anchor_config(&self, slug: &str) -> Result<AnchorConfig, AnchorError> {
-        let url = format!("https://{}/.well-known/stellar.toml", slug);
+    pub async fn fetch_anchor_config(
+        &self,
+        homepage_url: &str,
+    ) -> Result<AnchorConfig, AnchorError> {
+        let url = format!("{}/.well-known/stellar.toml", homepage_url);
         let url = Url::parse(&url)?;
 
         let response = self.client.get(url).send().await?;
         let toml_str = response.text().await?;
 
-        let toml: AnchorConfig = toml::from_str(&toml_str)
-            .map_err(|e| AnchorError::TomlParseError(e.to_string()))?;
+        let toml: AnchorConfig =
+            toml::from_str(&toml_str).map_err(|e| AnchorError::TomlParseError(e.to_string()))?;
 
         Ok(toml)
     }
-    
+
     pub async fn upsert_anchor(&self, slug: String, config: AnchorConfig) {
         let mut anchors = self.anchors.write().await;
         anchors.insert(slug, config);
     }
-    
+
     pub async fn get_anchor(&self, slug: &str) -> Result<AnchorConfig, AnchorError> {
-        let anchors = self.anchors.read().await;
-        anchors.get(slug)
+        let mut anchor_homepage_map: HashMap<String, String> = HashMap::new();
+
+        // Set default supported anchors
+        anchor_homepage_map.insert("mykobo".to_string(), "https://www.mykobo.co".to_string());
+
+        let current_anchor = anchor_homepage_map
+            .get(slug)
             .cloned()
-            .ok_or_else(|| AnchorError::MissingField(format!("anchor not found for {}", slug)))
+            .ok_or_else(|| AnchorError::MissingField(format!("anchor not found for {}", slug)));
+
+        if current_anchor.is_ok() {
+            let anchor_config = self
+                .fetch_anchor_config(current_anchor.unwrap().as_str())
+                .await;
+
+            anchor_config
+        } else {
+            Err(AnchorError::MissingField(format!(
+                "anchor not found for {}",
+                slug
+            )))
+        }
     }
 
-    pub async fn get_anchor_config_details(&self, slug: &str) -> Result<AnchorConfigDetails, AnchorError> {
+    pub async fn get_anchor_config_details(
+        &self,
+        slug: &str,
+    ) -> Result<AnchorConfigDetails, AnchorError> {
         let anchor_config = self.get_anchor(slug).await?;
         let details = AnchorConfigDetails {
             general_info: GeneralInfo {
@@ -191,7 +215,9 @@ impl AnchorService {
                 transfer_server_sep0024: anchor_config.transfer_server_sep0024.clone(),
                 kyc_server: anchor_config.kyc_server.clone(),
                 web_auth_endpoint: anchor_config.web_auth_endpoint.clone(),
-                web_auth_for_contracts_endpoint: anchor_config.web_auth_for_contracts_endpoint.clone(),
+                web_auth_for_contracts_endpoint: anchor_config
+                    .web_auth_for_contracts_endpoint
+                    .clone(),
                 web_auth_contract_id: anchor_config.web_auth_contract_id.clone(),
                 signing_key: anchor_config.signing_key.clone(),
                 horizon_url: anchor_config.horizon_url.clone(),
@@ -220,7 +246,7 @@ impl AnchorService {
                     org_license_type: doc.org_license_type.clone(),
                     org_license_number: doc.org_license_number.clone(),
                 }),
-                __=> None,
+                __ => None,
             },
         };
 

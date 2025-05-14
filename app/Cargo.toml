@@ -10,13 +10,9 @@ path = "src/main.rs"
 [dependencies]
 controllers = { path = "../controllers" }
 models = { path = "../models" }
-helpers ={ path = "../helpers"}
+helpers = { path = "../helpers" }
 services = { path = "../services" }
 rocket.workspace = true
 dotenv.workspace = true
 stellar-base.workspace = true
 stellar_sdk.workspace = true
-
-
-
-

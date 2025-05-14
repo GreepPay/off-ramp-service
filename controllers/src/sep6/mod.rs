@@ -1,22 +1,23 @@
-use form::form::{ Sep6WithdrawForm, Sep6WithdrawExchangeForm, Sep6TransactionsForm, Sep6TransactionForm, Sep6InfoForm};
-use rocket::form::Form;
-use services::sep6::sep6::{get_anchor_info, get_transactions, get_transaction, get_withdraw_exchange, get_withdraw, WithdrawResponse, InfoResponse};
-
-
-
+use form::form::{
+    Sep6InfoForm, Sep6TransactionForm, Sep6TransactionsForm, Sep6WithdrawExchangeForm,
+    Sep6WithdrawForm,
+};
+use rocket::serde::json::Json;
+use services::sep6::sep6::{
+    InfoResponse, WithdrawResponse, get_anchor_info, get_transaction, get_transactions,
+    get_withdraw, get_withdraw_exchange,
+};
 
 pub mod form;
 
 pub async fn get_sep6_info(
-    data: Form<Sep6InfoForm<'_>>,
+    data: Json<Sep6InfoForm<'_>>,
 ) -> Result<InfoResponse, Box<dyn std::error::Error>> {
-    Ok(get_anchor_info(
-        data.slug,
-    ).await?)
+    Ok(get_anchor_info(data.slug).await?)
 }
 
 pub async fn get_sep6_withdraw(
-    data: Form<Sep6WithdrawForm<'_>>,
+    data: Json<Sep6WithdrawForm<'_>>,
 ) -> Result<WithdrawResponse, Box<dyn std::error::Error>> {
     Ok(get_withdraw(
         data.slug,
@@ -29,12 +30,13 @@ pub async fn get_sep6_withdraw(
         data.country_code,
         data.refund_memo,
         data.refund_memo_type,
-    ).await?)
+    )
+    .await?)
 }
 
 pub async fn get_sep6_withdraw_exchange(
-    data: Form<Sep6WithdrawExchangeForm<'_>>,
-) -> Result<WithdrawResponse,Box<dyn std::error::Error>> {
+    data: Json<Sep6WithdrawExchangeForm<'_>>,
+) -> Result<WithdrawResponse, Box<dyn std::error::Error>> {
     Ok(get_withdraw_exchange(
         data.slug,
         data.account,
@@ -48,11 +50,12 @@ pub async fn get_sep6_withdraw_exchange(
         data.country_code,
         data.refund_memo,
         data.refund_memo_type,
-    ).await?)
+    )
+    .await?)
 }
 
 pub async fn get_sep6_transactions(
-    data: Form<Sep6TransactionsForm<'_>>,
+    data: Json<Sep6TransactionsForm<'_>>,
     kind: Option<Vec<&str>>,
 ) -> Result<Vec<models::sep6::Sep6Transaction>, Box<dyn std::error::Error>> {
     Ok(get_transactions(
@@ -63,11 +66,12 @@ pub async fn get_sep6_transactions(
         data.limit,
         kind,
         data.paging_id,
-    ).await?)
+    )
+    .await?)
 }
 
 pub async fn get_sep6_transaction(
-    data: Form<Sep6TransactionForm<'_>>,
+    data: Json<Sep6TransactionForm<'_>>,
 ) -> Result<models::sep6::Sep6Transaction, Box<dyn std::error::Error>> {
     Ok(get_transaction(
         data.slug,
@@ -75,5 +79,6 @@ pub async fn get_sep6_transaction(
         data.id,
         data.stellar_transaction_id,
         data.external_transaction_id,
-    ).await?)
+    )
+    .await?)
 }

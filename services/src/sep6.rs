@@ -1,204 +1,206 @@
-pub mod sep6{
-use std::collections::HashMap;
-use bigdecimal::BigDecimal;
-use chrono::Utc;
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
-use thiserror::Error;
-use diesel::RunQueryDsl; 
+pub mod sep6 {
+    use bigdecimal::BigDecimal;
+    use chrono::Utc;
+    use diesel::RunQueryDsl;
+    use reqwest::Client;
+    use serde::{Deserialize, Serialize};
+    use std::collections::HashMap;
+    use std::str::FromStr;
+    use thiserror::Error;
 
-use helpers::{
-    auth::authenticate,
-    keypair::generate_keypair
-};
+    use helpers::{auth::authenticate, keypair::generate_keypair};
 
-use crate::common::get_anchor_config_details;
+    use crate::common::get_anchor_config_details;
 
+    use models::{
+        common::establish_connection,
+        schema::offramp_service::sep6_transactions,
+        sep6::{NewSep6Transaction, Sep6Transaction},
+    };
 
-use models::{
-    common::establish_connection,
-    sep6::{Sep6Transaction, NewSep6Transaction},
-    schema::offramp_service::sep6_transactions,
-};
+    #[derive(Error, Debug)]
+    pub enum Sep6Error {
+        #[error("HTTP error: {0}")]
+        HttpError(#[from] reqwest::Error),
 
-#[derive(Error, Debug)]
-pub enum Sep6Error {
-    #[error("HTTP error: {0}")]
-    HttpError(#[from] reqwest::Error),
+        #[error("Authentication failed")]
+        AuthFailed,
 
-    #[error("Authentication failed")]
-    AuthFailed,
+        #[error("Invalid request: {0}")]
+        InvalidRequest(String),
 
-    #[error("Invalid request: {0}")]
-    InvalidRequest(String),
+        #[error("Transaction not found")]
+        TransactionNotFound,
 
-    #[error("Transaction not found")]
-    TransactionNotFound,
+        #[error("Anchor not supported")]
+        AnchorNotSupported,
 
-    #[error("Anchor not supported")]
-    AnchorNotSupported,
+        #[error("Database error: {0}")]
+        DatabaseError(String),
+    }
 
-    #[error("Database error: {0}")]
-    DatabaseError(String),
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct DepositResponse {
+        pub how: Option<String>,
+        pub instructions: Option<HashMap<String, InstructionField>>,
+        pub id: Option<String>,
+        pub eta: Option<i32>,
+        pub min_amount: Option<f64>,
+        pub max_amount: Option<f64>,
+        pub fee_fixed: Option<f64>,
+        pub fee_percent: Option<f64>,
+        pub extra_info: Option<ExtraInfo>,
+    }
+    #[derive(Error, Debug)]
+    pub enum KeyPairError {
+        #[error("Generation failed")]
+        GenerationFailed,
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DepositResponse {
-    pub how: Option<String>,
-    pub instructions: Option<HashMap<String, InstructionField>>,
-    pub id: Option<String>,
-    pub eta: Option<i32>,
-    pub min_amount: Option<f64>,
-    pub max_amount: Option<f64>,
-    pub fee_fixed: Option<f64>,
-    pub fee_percent: Option<f64>,
-    pub extra_info: Option<ExtraInfo>,
-}
-#[derive(Error, Debug)]
-pub enum KeyPairError {
-    #[error("Generation failed")]
-    GenerationFailed,
+        #[error("Invalid key")]
+        InvalidKey,
 
-    #[error("Invalid key")]
-    InvalidKey,
+        #[error("Serialization error: {0}")]
+        SerializationError(String),
 
-    #[error("Serialization error: {0}")]
-    SerializationError(String),
+        #[error("Deserialization error: {0}")]
+        DeserializationError(String),
 
-    #[error("Deserialization error: {0}")]
-    DeserializationError(String),
+        #[error("Invalid format")]
+        InvalidFormat,
 
-    #[error("Invalid format")]
-    InvalidFormat,
+        #[error("IO error: {0}")]
+        IoError(#[from] std::io::Error),
+    }
 
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct InstructionField {
+        pub value: String,
+        pub description: String,
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct InstructionField {
-    pub value: String,
-    pub description: String,
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct ExtraInfo {
+        pub message: Option<String>,
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ExtraInfo {
-    pub message: Option<String>,
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct WithdrawResponse {
+        pub account_id: Option<String>,
+        pub memo_type: Option<String>,
+        pub memo: Option<String>,
+        pub id: Option<String>,
+        pub eta: Option<i32>,
+        pub min_amount: Option<f64>,
+        pub max_amount: Option<f64>,
+        pub fee_fixed: Option<f64>,
+        pub fee_percent: Option<f64>,
+        pub extra_info: Option<ExtraInfo>,
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct WithdrawResponse {
-    pub account_id: Option<String>,
-    pub memo_type: Option<String>,
-    pub memo: Option<String>,
-    pub id: Option<String>,
-    pub eta: Option<i32>,
-    pub min_amount: Option<f64>,
-    pub max_amount: Option<f64>,
-    pub fee_fixed: Option<f64>,
-    pub fee_percent: Option<f64>,
-    pub extra_info: Option<ExtraInfo>,
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct InfoResponse {
+        pub deposit: HashMap<String, DepositAssetInfo>,
+        // #[serde(rename = "deposit-exchange")]
+        // pub deposit_exchange: HashMap<String, ExchangeAssetInfo>,
+        pub withdraw: HashMap<String, WithdrawAssetInfo>,
+        // #[serde(rename = "withdraw-exchange")]
+        // pub withdraw_exchange: HashMap<String, ExchangeAssetInfo>,
+        pub fee: FeeInfo,
+        pub transactions: EndpointInfo,
+        pub transaction: EndpointInfo,
+        pub features: Features,
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct InfoResponse {
-    pub deposit: HashMap<String, DepositAssetInfo>,
-    #[serde(rename = "deposit-exchange")]
-    pub deposit_exchange: HashMap<String, ExchangeAssetInfo>,
-    pub withdraw: HashMap<String, WithdrawAssetInfo>,
-    #[serde(rename = "withdraw-exchange")]
-    pub withdraw_exchange: HashMap<String, ExchangeAssetInfo>,
-    pub fee: FeeInfo,
-    pub transactions: EndpointInfo,
-    pub transaction: EndpointInfo,
-    pub features: Features,
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct DepositAssetInfo {
+        pub enabled: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub authentication_required: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub min_amount: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub max_amount: Option<f64>,
+        pub funding_methods: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub fee_fixed: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub fee_percent: Option<f64>,
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DepositAssetInfo {
-    pub enabled: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub authentication_required: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_amount: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_amount: Option<f64>,
-    pub funding_methods: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fee_fixed: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fee_percent: Option<f64>,
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct WithdrawAssetInfo {
+        pub enabled: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub authentication_required: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub min_amount: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub max_amount: Option<f64>,
+        pub funding_methods: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub fee_fixed: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub fee_percent: Option<f64>,
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct WithdrawAssetInfo {
-    pub enabled: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub authentication_required: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_amount: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_amount: Option<f64>,
-    pub funding_methods: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fee_fixed: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fee_percent: Option<f64>,
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct ExchangeAssetInfo {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub authentication_required: Option<bool>,
+        pub funding_methods: Vec<String>,
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ExchangeAssetInfo {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub authentication_required: Option<bool>,
-    pub funding_methods: Vec<String>,
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct FeeInfo {
+        pub enabled: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub description: Option<String>,
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FeeInfo {
-    pub enabled: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-}
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct EndpointInfo {
+        pub enabled: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub authentication_required: Option<bool>,
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EndpointInfo {
-    pub enabled: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub authentication_required: Option<bool>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Features {
-    pub account_creation: bool,
-    pub claimable_balances: bool,
-}
-
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct Features {
+        pub account_creation: bool,
+        pub claimable_balances: bool,
+    }
 
     // 1. GET /info
-    pub async fn get_anchor_info( slug: &str) -> Result<InfoResponse, Sep6Error> {
+    pub async fn get_anchor_info(slug: &str) -> Result<InfoResponse, Sep6Error> {
         let client = Client::new();
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
-            .map_err(|_| Sep6Error::AuthFailed)?;
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep6Error::AuthFailed)?;
         let transfer_server = &anchor_config.general_info.transfer_server;
         // Unwrap the Option or provide a default value
         let transfer_server_str = transfer_server.as_ref().map_or_else(
-            || "".to_string(),  // Default value if None
-            |s| s.to_string()   // Use the string value if Some
+            || "".to_string(), // Default value if None
+            |s| s.to_string(), // Use the string value if Some
         );
 
         let url = format!("{}/info", transfer_server_str);
         let response = client.get(&url).send().await?;
 
         if response.status().is_success() {
-            Ok(response.json().await?)
+            let response_data = response.json().await?;
+
+            Ok(response_data)
         } else {
-            Err(Sep6Error::InvalidRequest(format!("Status: {}", response.status())))
+            Err(Sep6Error::InvalidRequest(format!(
+                "Status: {}",
+                response.status()
+            )))
         }
     }
 
     // 2. GET /transactions
-    pub async fn get_transactions(    
+    pub async fn get_transactions(
         slug: &str,
         account: &str,
         asset_code: Option<&str>,
@@ -208,27 +210,36 @@ pub struct Features {
         paging_id: Option<&str>,
     ) -> Result<Vec<Sep6Transaction>, Sep6Error> {
         let client = Client::new();
-      
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
-            .map_err(|_| Sep6Error::AuthFailed)?;
+
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep6Error::AuthFailed)?;
         let transfer_server = &anchor_config.general_info.transfer_server;
         // Unwrap the Option or provide a default value
         let transfer_server_str = transfer_server.as_ref().map_or_else(
-            || "".to_string(),  // Default value if None
-            |s| s.to_string()   // Use the string value if Some
+            || "".to_string(), // Default value if None
+            |s| s.to_string(), // Use the string value if Some
         );
-    
+
         let keypair = match generate_keypair() {
             Ok(kp) => kp,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
-        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
+        let jwt = match authenticate(
+            &helpers::stellartoml::AnchorService::new(),
+            slug,
+            account,
+            &keypair,
+        )
+        .await
+        {
             Ok(token) => token,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
 
         let mut request = client
-            .get(&format!("{}/transactions",  transfer_server_str))
+            .get(&format!("{}/transactions", transfer_server_str))
             .bearer_auth(jwt);
 
         if let Some(code) = asset_code {
@@ -259,7 +270,8 @@ pub struct Features {
             let transactions: Vec<Sep6Transaction> = response.json().await?;
 
             // Save to database
-            let mut conn = establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
+            let mut conn =
+                establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
 
             for tx in &transactions {
                 let new_tx = NewSep6Transaction {
@@ -298,7 +310,6 @@ pub struct Features {
                     required_info_updates: tx.required_info_updates.clone(),
                     instructions: tx.instructions.clone(),
                     claimable_balance_id: tx.claimable_balance_id.clone(),
-
                 };
 
                 diesel::insert_into(sep6_transactions::table)
@@ -314,7 +325,10 @@ pub struct Features {
         } else if response.status() == 404 {
             Err(Sep6Error::TransactionNotFound)
         } else {
-            Err(Sep6Error::InvalidRequest(format!("Status: {}", response.status())))
+            Err(Sep6Error::InvalidRequest(format!(
+                "Status: {}",
+                response.status()
+            )))
         }
     }
 
@@ -330,18 +344,27 @@ pub struct Features {
         let keypair = match generate_keypair() {
             Ok(kp) => kp,
             Err(_) => return Err(Sep6Error::AuthFailed),
-        };//trying to use keypair error, buggy, will be back
-        
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
-            .map_err(|_| Sep6Error::AuthFailed)?;
+        }; //trying to use keypair error, buggy, will be back
+
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep6Error::AuthFailed)?;
         let transfer_server = &anchor_config.general_info.transfer_server;
         // Unwrap the Option or provide a default value
         let transfer_server_str = transfer_server.as_ref().map_or_else(
-            || "".to_string(),  // Default value if None
-            |s| s.to_string()   // Use the string value if Some
+            || "".to_string(), // Default value if None
+            |s| s.to_string(), // Use the string value if Some
         );
-    
-        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
+
+        let jwt = match authenticate(
+            &helpers::stellartoml::AnchorService::new(),
+            slug,
+            account,
+            &keypair,
+        )
+        .await
+        {
             Ok(token) => token,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
@@ -368,7 +391,8 @@ pub struct Features {
             let tx: Sep6Transaction = response.json().await?;
 
             // Save to database
-            let mut conn = establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
+            let mut conn =
+                establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
 
             let new_tx = NewSep6Transaction {
                 transaction_id: tx.transaction_id.clone(),
@@ -420,13 +444,15 @@ pub struct Features {
         } else if response.status() == 404 {
             Err(Sep6Error::TransactionNotFound)
         } else {
-            Err(Sep6Error::InvalidRequest(format!("Status: {}", response.status())))
+            Err(Sep6Error::InvalidRequest(format!(
+                "Status: {}",
+                response.status()
+            )))
         }
     }
 
     // 4. GET /withdraw-exchange
     pub async fn get_withdraw_exchange(
-   
         slug: &str,
         account: &str,
         source_asset: &str,
@@ -444,17 +470,26 @@ pub struct Features {
         let keypair = match generate_keypair() {
             Ok(kp) => kp,
             Err(_) => return Err(Sep6Error::AuthFailed),
-        };//trying to use keypair error, buggy, will be back
-        
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
-            .map_err(|_| Sep6Error::AuthFailed)?;
+        }; //trying to use keypair error, buggy, will be back
+
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep6Error::AuthFailed)?;
         let transfer_server = &anchor_config.general_info.transfer_server;
         // Unwrap the Option or provide a default value
         let transfer_server_str = transfer_server.as_ref().map_or_else(
-            || "".to_string(),  // Default value if None
-            |s| s.to_string()   // Use the string value if Some
+            || "".to_string(), // Default value if None
+            |s| s.to_string(), // Use the string value if Some
         );
-        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await{
+        let jwt = match authenticate(
+            &helpers::stellartoml::AnchorService::new(),
+            slug,
+            account,
+            &keypair,
+        )
+        .await
+        {
             Ok(token) => token,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
@@ -500,7 +535,8 @@ pub struct Features {
 
             // Save transaction to database if id is provided
             if let Some(tx_id) = &withdraw_response.id {
-                let mut conn = establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
+                let mut conn =
+                    establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
 
                 let new_tx = NewSep6Transaction {
                     transaction_id: tx_id.clone(),
@@ -508,11 +544,14 @@ pub struct Features {
                     status: "pending_user_transfer_start".to_string(), // Default status
                     status_eta: None,
                     more_info_url: None,
-                    amount_in: Some(BigDecimal::from_str(amount).map_err(|_| Sep6Error::InvalidRequest("Invalid amount".to_string()))?),
+                    amount_in: Some(
+                        BigDecimal::from_str(amount)
+                            .map_err(|_| Sep6Error::InvalidRequest("Invalid amount".to_string()))?,
+                    ),
                     amount_in_asset: Some(source_asset.to_string()),
-                    amount_out: None, 
+                    amount_out: None,
                     amount_out_asset: Some(destination_asset.to_string()),
-                    amount_fee: None, 
+                    amount_fee: None,
                     amount_fee_asset: None,
                     fee_details: None,
                     quote_id: quote_id.map(|s| s.to_string()),
@@ -524,7 +563,7 @@ pub struct Features {
                     deposit_memo_type: None,
                     withdraw_anchor_account: None,
                     withdraw_memo: None,
-                    withdraw_memo_type: None, 
+                    withdraw_memo_type: None,
                     started_at: Some(Utc::now().naive_utc()),
                     updated_at: None,
                     completed_at: None,
@@ -538,7 +577,6 @@ pub struct Features {
                     required_info_updates: None,
                     instructions: None,
                     claimable_balance_id: None,
-
                 };
 
                 diesel::insert_into(sep6_transactions::table)
@@ -549,7 +587,10 @@ pub struct Features {
 
             Ok(withdraw_response)
         } else {
-            Err(Sep6Error::InvalidRequest(format!("Status: {}", response.status())))
+            Err(Sep6Error::InvalidRequest(format!(
+                "Status: {}",
+                response.status()
+            )))
         }
     }
 
@@ -571,21 +612,30 @@ pub struct Features {
             Ok(kp) => kp,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug).await
-            .map_err(|_| Sep6Error::AuthFailed)?;
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep6Error::AuthFailed)?;
         let transfer_server = &anchor_config.general_info.transfer_server;
         // Unwrap the Option or provide a default value
         let transfer_server_str = transfer_server.as_ref().map_or_else(
-            || "".to_string(),  // Default value if None
-            |s| s.to_string()   // Use the string value if Some
+            || "".to_string(), // Default value if None
+            |s| s.to_string(), // Use the string value if Some
         );
-        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(),slug,account, &keypair).await {
+        let jwt = match authenticate(
+            &helpers::stellartoml::AnchorService::new(),
+            slug,
+            account,
+            &keypair,
+        )
+        .await
+        {
             Ok(token) => token,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
 
         let mut request = client
-            .get(&format!("{}/withdraw",transfer_server_str))
+            .get(&format!("{}/withdraw", transfer_server_str))
             .bearer_auth(jwt)
             .query(&[
                 ("asset_code", asset_code),
@@ -623,7 +673,8 @@ pub struct Features {
 
             // Save transaction to database if id is provided
             if let Some(tx_id) = &withdraw_response.id {
-                let mut conn = establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
+                let mut conn =
+                    establish_connection().map_err(|e| Sep6Error::DatabaseError(e.to_string()))?;
 
                 let new_tx = NewSep6Transaction {
                     transaction_id: tx_id.clone(),
@@ -631,11 +682,17 @@ pub struct Features {
                     status: "pending_user_transfer_start".to_string(), // Default status
                     status_eta: None,
                     more_info_url: None,
-                    amount_in: amount.map(|a| BigDecimal::from_str(a).map_err(|_| Sep6Error::InvalidRequest("Invalid amount".to_string()))).transpose()?,
+                    amount_in: amount
+                        .map(|a| {
+                            BigDecimal::from_str(a).map_err(|_| {
+                                Sep6Error::InvalidRequest("Invalid amount".to_string())
+                            })
+                        })
+                        .transpose()?,
                     amount_in_asset: Some(asset_code.to_string()),
-                    amount_out: None, 
+                    amount_out: None,
                     amount_out_asset: None,
-                    amount_fee: None, 
+                    amount_fee: None,
                     amount_fee_asset: None,
                     fee_details: None,
                     quote_id: None,
@@ -661,7 +718,6 @@ pub struct Features {
                     required_info_updates: None,
                     instructions: None,
                     claimable_balance_id: None,
-
                 };
 
                 diesel::insert_into(sep6_transactions::table)
@@ -672,7 +728,10 @@ pub struct Features {
 
             Ok(withdraw_response)
         } else {
-            Err(Sep6Error::InvalidRequest(format!("Status: {}", response.status())))
+            Err(Sep6Error::InvalidRequest(format!(
+                "Status: {}",
+                response.status()
+            )))
         }
     }
 }

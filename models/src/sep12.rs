@@ -1,9 +1,8 @@
 use chrono::NaiveDateTime;
-use diesel::{Insertable, Queryable, Identifiable, Associations};
+use diesel::{Associations, Identifiable, Insertable, Queryable};
 use uuid::Uuid;
 
-use crate::schema::offramp_service::{sep12_customers, sep12_customer_files,
-};
+use crate::schema::offramp_service::{sep12_customer_files, sep12_customers};
 
 #[derive(Queryable, Identifiable, Debug)]
 #[diesel(table_name = sep12_customers)]

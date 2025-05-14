@@ -20,20 +20,21 @@ fn rocket() -> _ {
         )
         .mount(
             "/v1/withdrawl",
-            routes![ routes::sep6::sep6::withdraw,
+            routes![
+                routes::sep6::sep6::withdraw,
                 routes::sep6::sep6::withdraw_exchange,
                 routes::sep6::sep6::anchorinfo,
                 routes::sep6::sep6::transactions,
-                routes::sep6::sep6::transaction,],
+                routes::sep6::sep6::transaction,
+            ],
         )
-    
         .mount(
             "/v1/kyc",
-            routes![ 
+            routes![
                 routes::sep12::sep12::get_kyc_status,
                 routes::sep12::sep12::create_kyc,
                 routes::sep12::sep12::update_kyc,
-                routes::sep12::sep12::delete_customer,],
+                routes::sep12::sep12::delete_customer,
+            ],
         )
-    
 }
