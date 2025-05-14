@@ -9,6 +9,61 @@ pub mod offramp_service {
             batch -> Integer,
         }
     }
+    
+    diesel::table! {
+         offramp_service.sep31_transactions (id) {
+             id -> Uuid,
+             #[max_length = 56]
+             account -> Varchar,
+             memo -> Nullable<Text>,
+             #[max_length = 10]
+             memo_type -> Nullable<Varchar>,
+             transaction_id -> Varchar,
+             amount -> Numeric,
+             #[max_length = 255]
+             asset_code -> Varchar,
+             #[max_length = 255]
+             asset_issuer -> Nullable<Varchar>,
+             #[max_length = 255]
+             destination_asset -> Nullable<Varchar>,
+             #[max_length = 255]
+             quote_id -> Nullable<Varchar>,
+             #[max_length = 255]
+             sender_id -> Varchar,
+             #[max_length = 255]
+             receiver_id -> Varchar,
+             #[max_length = 56]
+             stellar_account_id -> Nullable<Varchar>,
+             #[max_length = 10]
+             stellar_memo_type -> Nullable<Varchar>,
+             stellar_memo -> Nullable<Text>,
+             #[max_length = 255]
+             status -> Varchar,
+             status_eta -> Nullable<Bigint>,
+             status_message -> Nullable<Text>,
+             amount_in -> Nullable<Numeric>,
+             #[max_length = 255]
+             amount_in_asset -> Nullable<Varchar>,
+             amount_out -> Nullable<Numeric>,
+             #[max_length = 255]
+             amount_out_asset -> Nullable<Varchar>,
+             amount_fee -> Nullable<Numeric>,
+             #[max_length = 255]
+             amount_fee_asset -> Nullable<Varchar>,
+             fee_details -> Nullable<Json>,
+             started_at -> Nullable<Timestamp>,
+             updated_at -> Nullable<Timestamp>,
+             completed_at -> Nullable<Timestamp>,
+             #[max_length = 255]
+             stellar_transaction_id -> Nullable<Varchar>,
+             #[max_length = 255]
+             external_transaction_id -> Nullable<Varchar>,
+             refunds -> Nullable<Json>,
+             required_info_message -> Nullable<Text>,
+             required_info_updates -> Nullable<Json>,
+             created_at -> Timestamp,
+         }
+     }
 
     diesel::table! {
         offramp_service.sep12_customers (id) {

@@ -37,4 +37,15 @@ fn rocket() -> _ {
                 routes::sep12::sep12::delete_customer,
             ],
         )
+    
+        .mount(
+            "/v1/crossborderpayment",
+            routes![
+                routes::sep31::routes::get_sep31_info_route,
+                routes::sep31::routes::create_sep31_transaction_route,
+                routes::sep31::routes::get_sep31_transaction_route,
+                routes::sep31::routes::update_sep31_transaction_route,
+                routes::sep31::routes::set_sep31_transaction_callback_route,
+            ],
+        )
 }
