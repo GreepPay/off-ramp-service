@@ -142,3 +142,46 @@ CREATE TABLE offramp_service.sep6_refund_payments (
 );
 
 CREATE INDEX idx_sep6_refund_payments_refund ON offramp_service.sep6_refund_payments (refund_id);
+
+-- SEP-31 tables
+CREATE TABLE offramp_service.sep31_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    account TEXT NOT NULL,
+    memo TEXT,
+    memo_type TEXT,
+    transaction_id TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    asset_code TEXT NOT NULL,
+    asset_issuer TEXT,
+    destination_asset TEXT,
+    quote_id TEXT,
+    sender_id TEXT NOT NULL,
+    receiver_id TEXT NOT NULL,
+    stellar_account_id TEXT,
+    stellar_memo_type TEXT,
+    stellar_memo TEXT,
+    status TEXT NOT NULL,
+    status_eta BIGINT,
+    status_message TEXT,
+    amount_in NUMERIC,
+    amount_in_asset TEXT,
+    amount_out NUMERIC,
+    amount_out_asset TEXT,
+    amount_fee NUMERIC,
+    amount_fee_asset TEXT,
+    fee_details JSONB,
+    started_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    stellar_transaction_id TEXT,
+    external_transaction_id TEXT,
+    refunds JSONB,
+    required_info_message TEXT,
+    required_info_updates JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW ()
+);
+
+CREATE INDEX idx_sep31_transactions_transaction_id ON offramp_service.sep31_transactions (transaction_id);
+
+CREATE INDEX idx_sep31_transactions_status ON offramp_service.sep31_transactions (status);
+

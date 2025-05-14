@@ -181,7 +181,7 @@ pub mod sep31 {
     // 1. GET /info
     pub async fn get_info(slug: &str) -> Result<InfoResponse, Sep31Error> {
         let client = Client::new();
-        
+
         let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
             .await
             .map_err(|_| Sep31Error::AuthFailed)?;
@@ -214,7 +214,7 @@ pub mod sep31 {
         request: TransactionRequest,
     ) -> Result<TransactionResponse, Sep31Error> {
         let client = Client::new();
-        
+
         let keypair = match generate_keypair() {
             Ok(kp) => kp,
             Err(_) => return Err(Sep31Error::KeypairGenerationFailed),
@@ -290,7 +290,7 @@ pub mod sep31 {
         transaction_id: &str,
     ) -> Result<Transaction, Sep31Error> {
         let client = Client::new();
-        
+
         let keypair = match generate_keypair() {
             Ok(kp) => kp,
             Err(_) => return Err(Sep31Error::KeypairGenerationFailed),
@@ -344,7 +344,7 @@ pub mod sep31 {
         fields: serde_json::Value,
     ) -> Result<Transaction, Sep31Error> {
         let client = Client::new();
-        
+
         let keypair = match generate_keypair() {
             Ok(kp) => kp,
             Err(_) => return Err(Sep31Error::KeypairGenerationFailed),
@@ -380,7 +380,20 @@ pub mod sep31 {
             .await?;
 
         if response.status().is_success() {
-            Ok(response.json().await?)
+            let transaction: Transaction = response.json().await?;
+            let mut conn = establish_connection().map_err(|e| Sep31Error::DatabaseError(e.to_string()))?;
+
+            diesel::update(sep31_transactions::table)
+                .filter(sep31_transactions::transaction_id.eq(transaction_id))
+                .set((
+                    sep31_transactions::status.eq(transaction.status.clone()),
+                    sep31_transactions::stellar_transaction_id.eq(transaction.stellar_transaction_id.clone()),
+    
+                ))
+                .execute(&mut conn)
+                .map_err(|e| Sep31Error::DatabaseError(e.to_string()))?;
+
+            Ok(transaction)
         } else if response.status() == 404 {
             Err(Sep31Error::TransactionNotFound)
         } else {
@@ -397,7 +410,7 @@ pub mod sep31 {
         callback_url: &str,
     ) -> Result<(), Sep31Error> {
         let client = Client::new();
-        
+
         let keypair = match generate_keypair() {
             Ok(kp) => kp,
             Err(_) => return Err(Sep31Error::KeypairGenerationFailed),
