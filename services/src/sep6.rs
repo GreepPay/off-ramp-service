@@ -320,7 +320,6 @@ pub struct Features {
 
     // 3. GET /transaction
     pub async fn get_transaction(
-      
         slug: &str,
         account: &str,
         id: Option<&str>,
