@@ -478,6 +478,7 @@ dependencies = [
  "bigdecimal",
  "chrono",
  "models",
+ "multipart",
  "reqwest",
  "rocket",
  "serde",
@@ -485,6 +486,7 @@ dependencies = [
  "services",
  "stellar-base",
  "stellar_sdk",
+ "tokio",
  "uuid",
 ]
 

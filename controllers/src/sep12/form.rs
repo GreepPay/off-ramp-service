@@ -1,7 +1,8 @@
 pub mod form {
 
     use rocket::serde::{Deserialize, Serialize,};
-    use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
+    use rocket::form::FromForm;
+    use rocket::fs::TempFile;
 
     #[derive(Deserialize, Serialize)]
     #[serde(crate = "rocket::serde")]
@@ -41,23 +42,22 @@ pub mod form {
     }
     
 
-    #[derive(SerdeDeserialize, SerdeSerialize)]
-    #[serde(crate = "rocket::serde")]
-    pub struct Sep12FileField {
+    #[derive(FromForm)]
+    pub struct Sep12FileField<'v> {
+        #[field(name = "unused")]
         pub name: String,
-        #[serde(rename = "file")]
-        pub data: Vec<u8>,  // For binary file data in JSON (base64 encoded)
-        #[serde(rename = "content_type")]
+        #[field(name = "file")]
+        pub data: TempFile<'v>,  
+        #[field(name = "content_type")]
         pub content_type: String,
     }
     
-    #[derive(SerdeDeserialize, SerdeSerialize)]
-    #[serde(crate = "rocket::serde")]
-    pub struct Sep12FieldsAndFiles {
-        #[serde(rename = "field")]
+    #[derive(FromForm)]
+    pub struct Sep12FieldsAndFiles<'v> {
+        #[field(name = "field")]
         pub fields: Vec<(String, String)>,
-        #[serde(rename = "field")]
-        pub files: Vec<Sep12FileField>,
+        #[field(name = "file_field")]
+        pub files: Vec<Sep12FileField<'v>>,
     }
     
 }

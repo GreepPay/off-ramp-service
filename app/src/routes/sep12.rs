@@ -11,11 +11,9 @@ pub mod sep12 {
         },
     };
     use services::sep12::sep12::Customer;
+    use rocket::form::Form;
     use rocket::{delete, get, http::Status, post, put, response::status, serde::json::Json};
 
-    
-
-    
     
     #[get("/customer", data = "<form>")]
     pub async fn get_kyc_status(
@@ -35,35 +33,40 @@ pub mod sep12 {
         ))
     }
     
-    #[put("/customer", data = "<data>")]
-    pub async fn create_kyc(
-        data: Json<(Sep12CreateKycForm, Sep12FieldsAndFiles)>,
+    #[put("/customer")]
+    pub async fn create_kyc<'v>(
+        form: Form<Sep12FieldsAndFiles<'v>>,
+        data: Json<Sep12CreateKycForm>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let customer = create_sep12_kyc(data)
+        let data_tuple = Json((data.into_inner(), form));
+        let customer = create_sep12_kyc(data_tuple)
             .await
             .map_err(|e| {
-                eprintln!("Error creating SEP-12 KYCSep12FieldsAndFiles: {:?}", e);
+                eprintln!("Error creating SEP-12 KYC: {:?}", e);
                 failure("Failed to create KYC", Status::InternalServerError)
             })?;
-    
+
         Ok(success(
             "Customer KYC created successfully",
             customer,
             Status::Accepted,
         ))
     }
-    
-    #[post("/customer", data = "<data>")]
-    pub async fn update_kyc(
-        data: Json<(Sep12UpdateKycForm,Sep12FieldsAndFiles)>,
+
+
+    #[post("/customer")]
+    pub async fn update_kyc<'v>(
+        form: Form<Sep12FieldsAndFiles<'v>>,
+        data: Json<Sep12UpdateKycForm>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let customer = update_sep12_kyc(data)
+        let data_tuple = Json((data.into_inner(), form));
+        let customer = update_sep12_kyc(data_tuple)
             .await
             .map_err(|e| {
                 eprintln!("Error updating SEP-12 KYC: {:?}", e);
                 failure("Failed to update KYC", Status::InternalServerError)
             })?;
-    
+
         Ok(success(
             "Customer KYC updated successfully",
             customer,
