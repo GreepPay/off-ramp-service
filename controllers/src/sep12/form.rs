@@ -15,22 +15,7 @@ pub mod form {
         pub customer_type: Option<String>,
     }
     
-    #[derive(Deserialize, Serialize)]
-    #[serde(crate = "rocket::serde")]
-    pub struct Sep12CreateKycForm {
-        pub slug: String,
-        pub account: String,
-        #[serde(default)]
-        pub memo: Option<String>,
-        pub customer_type: String,
-    }
-    
-    #[derive(Deserialize, Serialize)]
-    #[serde(crate = "rocket::serde")]
-    pub struct Sep12UpdateKycForm {
-        pub slug: String,
-        pub customer_id: String,
-    }
+
     
     #[derive(Deserialize, Serialize)]
     #[serde(crate = "rocket::serde")]
@@ -41,7 +26,6 @@ pub mod form {
         pub memo: Option<String>,
     }
     
-
     #[derive(FromForm)]
     pub struct Sep12FileField<'v> {
         #[field(name = "unused")]
@@ -54,10 +38,27 @@ pub mod form {
     
     #[derive(FromForm)]
     pub struct Sep12FieldsAndFiles<'v> {
+        // KYC fields
+        pub slug: String,
+        pub account: String,
+        #[field(default = None)]
+        pub memo: Option<String>,
+        pub customer_type: String,
         #[field(name = "field")]
         pub fields: Vec<(String, String)>,
         #[field(name = "file_field")]
         pub files: Vec<Sep12FileField<'v>>,
     }
     
+    
+    
+    #[derive(FromForm)]
+    pub struct Sep12UpdateKycForm<'v> {
+        pub slug: String,
+        pub customer_id: String,
+        #[field(name = "field")]
+        pub fields: Vec<(String, String)>,
+        #[field(name = "file_field")]
+        pub files: Vec<Sep12FileField<'v>>
+    }
 }
