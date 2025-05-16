@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use stellar_base::KeyPair;
 use thiserror::Error;
 
