@@ -1,4 +1,3 @@
--- migrations/YYYY-MM-DD-HHMMSS_create_offramp_tables/down.sql
 DROP TABLE IF EXISTS offramp_service.sep31_transactions;
 
 DROP INDEX IF EXISTS offramp_service.idx_sep31_transactions_transaction_id;

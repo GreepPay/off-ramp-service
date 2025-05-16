@@ -1,7 +1,3 @@
--- migrations/YYYY-MM-DD-HHMMSS_create_offramp_tables/up.sql
-CREATE SCHEMA IF NOT EXISTS offramp_service;
-
--- SEP-12 customer tables
 CREATE TABLE offramp_service.sep12_customers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     account TEXT NOT NULL,
@@ -41,7 +37,6 @@ CREATE TABLE offramp_service.sep12_customer_files (
 
 CREATE INDEX idx_sep12_customer_files_customer ON offramp_service.sep12_customer_files (customer_id);
 
--- SEP-38 tables
 CREATE TABLE offramp_service.sep38_assets (
     id SERIAL PRIMARY KEY,
     asset TEXT NOT NULL UNIQUE,
@@ -76,7 +71,6 @@ CREATE TABLE offramp_service.sep38_quotes (
 
 CREATE INDEX idx_sep38_quotes_transaction ON offramp_service.sep38_quotes (transaction_id);
 
--- SEP-6 tables
 CREATE TABLE offramp_service.sep6_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     transaction_id TEXT NOT NULL UNIQUE,
@@ -143,7 +137,6 @@ CREATE TABLE offramp_service.sep6_refund_payments (
 
 CREATE INDEX idx_sep6_refund_payments_refund ON offramp_service.sep6_refund_payments (refund_id);
 
--- SEP-31 tables
 CREATE TABLE offramp_service.sep31_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     account TEXT NOT NULL,
@@ -184,4 +177,3 @@ CREATE TABLE offramp_service.sep31_transactions (
 CREATE INDEX idx_sep31_transactions_transaction_id ON offramp_service.sep31_transactions (transaction_id);
 
 CREATE INDEX idx_sep31_transactions_status ON offramp_service.sep31_transactions (status);
-
