@@ -1,26 +1,24 @@
 // SEP31
 // Helper Methods:
-// Post transactions 
-// Update transactions 
-// Get single transactions 
+// Post transactions
+// Update transactions
+// Get single transactions
 // PUT Transaction Callback
-// 
-
-
+//
 
 pub mod sep31 {
+    use crate::common::get_anchor_config_details;
     use bigdecimal::BigDecimal;
     use diesel::prelude::*;
-    use reqwest::Client;
-    use serde::{Deserialize, Serialize};
-    use thiserror::Error;
-    use crate::common::get_anchor_config_details;
     use helpers::{auth::authenticate, keypair::generate_keypair};
     use models::{
-        common::establish_connection,
-        schema::offramp_service::sep31_transactions,
+        common::establish_connection, schema::offramp_service::sep31_transactions,
         sep31::NewSep31Transaction,
     };
+    use reqwest::Client;
+    use serde::{Deserialize, Serialize};
+    use std::collections::HashMap;
+    use thiserror::Error;
 
     #[derive(Error, Debug)]
     pub enum Sep31Error {
@@ -44,24 +42,55 @@ pub mod sep31 {
     }
 
     #[derive(Debug, Serialize, Deserialize)]
+    pub struct Sep12Requirements {
+        #[serde(rename = "sender")]
+        pub sender: Sep12TypeRequirements,
+        #[serde(rename = "receiver")]
+        pub receiver: Sep12TypeRequirements,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct Sep12TypeRequirements {
+        #[serde(rename = "types")]
+        pub types: HashMap<String, Sep12Type>,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct Sep12Type {
+        pub description: String,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct TransactionFields {
+        #[serde(rename = "transaction")]
+        pub transaction: HashMap<String, FieldDetails>,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct FieldDetails {
+        pub description: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub choices: Option<Vec<String>>,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
     pub struct AssetInfo {
-        pub asset: String,
-        pub quotes_supported: bool,
-        pub quotes_required: bool,
+        pub enabled: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub sep12: Option<Sep12Requirements>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub fields: Option<TransactionFields>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub max_amount: Option<BigDecimal>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub fee_fixed: Option<BigDecimal>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub fee_percent: Option<BigDecimal>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub min_amount: Option<BigDecimal>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub max_amount: Option<BigDecimal>,
-        pub funding_methods: Vec<String>,
     }
 
     #[derive(Debug, Serialize, Deserialize)]
     pub struct InfoResponse {
-        pub receive: Vec<AssetInfo>,
+        pub receive: HashMap<String, AssetInfo>,
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -182,23 +211,23 @@ pub mod sep31 {
     pub async fn get_info(slug: &str) -> Result<InfoResponse, Sep31Error> {
         let client = Client::new();
 
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
-            .await
-            .map_err(|_| Sep31Error::AuthFailed)?;
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep31Error::AuthFailed)?;
 
         let direct_payment_server = &anchor_config.general_info.direct_payment_server;
-        let direct_payment_server_str = direct_payment_server.as_ref().map_or_else(
-            || "".to_string(),
-            |s| s.to_string(),
-        );
+        let direct_payment_server_str = direct_payment_server
+            .as_ref()
+            .map_or_else(|| "".to_string(), |s| s.to_string());
 
         let response = client
             .get(&format!("{}/info", direct_payment_server_str))
             .send()
             .await?;
-
         if response.status().is_success() {
-            Ok(response.json().await?)
+            let response_json = response.json().await?;
+            Ok(response_json)
         } else {
             Err(Sep31Error::InvalidRequest(format!(
                 "Status: {}",
@@ -215,32 +244,26 @@ pub mod sep31 {
     ) -> Result<TransactionResponse, Sep31Error> {
         let client = Client::new();
 
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep31Error::KeypairGenerationFailed),
         };
 
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
-            .await
-            .map_err(|_| Sep31Error::AuthFailed)?;
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep31Error::AuthFailed)?;
 
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            slug,
-            account,
-            &keypair,
-        )
-        .await
-        {
-            Ok(token) => token,
-            Err(_) => return Err(Sep31Error::AuthFailed),
-        };
+        let jwt =
+            match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
+                Ok(token) => token,
+                Err(_) => return Err(Sep31Error::AuthFailed),
+            };
 
         let direct_payment_server = &anchor_config.general_info.direct_payment_server;
-        let direct_payment_server_str = direct_payment_server.as_ref().map_or_else(
-            || "".to_string(),
-            |s| s.to_string(),
-        );
+        let direct_payment_server_str = direct_payment_server
+            .as_ref()
+            .map_or_else(|| "".to_string(), |s| s.to_string());
 
         let response = client
             .post(&format!("{}/transactions", direct_payment_server_str))
@@ -253,7 +276,8 @@ pub mod sep31 {
             let transaction_response: TransactionResponse = response.json().await?;
 
             // Save to database
-            let mut conn = establish_connection().map_err(|e| Sep31Error::DatabaseError(e.to_string()))?;
+            let mut conn =
+                establish_connection().map_err(|e| Sep31Error::DatabaseError(e.to_string()))?;
 
             let new_transaction = NewSep31Transaction {
                 transaction_id: transaction_response.id.clone(),
@@ -291,35 +315,32 @@ pub mod sep31 {
     ) -> Result<Transaction, Sep31Error> {
         let client = Client::new();
 
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep31Error::KeypairGenerationFailed),
         };
 
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
-            .await
-            .map_err(|_| Sep31Error::AuthFailed)?;
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep31Error::AuthFailed)?;
 
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            slug,
-            account,
-            &keypair,
-        )
-        .await
-        {
-            Ok(token) => token,
-            Err(_) => return Err(Sep31Error::AuthFailed),
-        };
+        let jwt =
+            match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
+                Ok(token) => token,
+                Err(_) => return Err(Sep31Error::AuthFailed),
+            };
 
         let direct_payment_server = &anchor_config.general_info.direct_payment_server;
-        let direct_payment_server_str = direct_payment_server.as_ref().map_or_else(
-            || "".to_string(),
-            |s| s.to_string(),
-        );
+        let direct_payment_server_str = direct_payment_server
+            .as_ref()
+            .map_or_else(|| "".to_string(), |s| s.to_string());
 
         let response = client
-            .get(&format!("{}/transactions/{}", direct_payment_server_str, transaction_id))
+            .get(&format!(
+                "{}/transactions/{}",
+                direct_payment_server_str, transaction_id
+            ))
             .bearer_auth(jwt)
             .send()
             .await?;
@@ -345,35 +366,32 @@ pub mod sep31 {
     ) -> Result<Transaction, Sep31Error> {
         let client = Client::new();
 
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep31Error::KeypairGenerationFailed),
         };
 
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
-            .await
-            .map_err(|_| Sep31Error::AuthFailed)?;
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep31Error::AuthFailed)?;
 
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            slug,
-            account,
-            &keypair,
-        )
-        .await
-        {
-            Ok(token) => token,
-            Err(_) => return Err(Sep31Error::AuthFailed),
-        };
+        let jwt =
+            match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
+                Ok(token) => token,
+                Err(_) => return Err(Sep31Error::AuthFailed),
+            };
 
         let direct_payment_server = &anchor_config.general_info.direct_payment_server;
-        let direct_payment_server_str = direct_payment_server.as_ref().map_or_else(
-            || "".to_string(),
-            |s| s.to_string(),
-        );
+        let direct_payment_server_str = direct_payment_server
+            .as_ref()
+            .map_or_else(|| "".to_string(), |s| s.to_string());
 
         let response = client
-            .patch(&format!("{}/transactions/{}", direct_payment_server_str, transaction_id))
+            .patch(&format!(
+                "{}/transactions/{}",
+                direct_payment_server_str, transaction_id
+            ))
             .bearer_auth(jwt)
             .json(&fields)
             .send()
@@ -381,14 +399,15 @@ pub mod sep31 {
 
         if response.status().is_success() {
             let transaction: Transaction = response.json().await?;
-            let mut conn = establish_connection().map_err(|e| Sep31Error::DatabaseError(e.to_string()))?;
+            let mut conn =
+                establish_connection().map_err(|e| Sep31Error::DatabaseError(e.to_string()))?;
 
             diesel::update(sep31_transactions::table)
                 .filter(sep31_transactions::transaction_id.eq(transaction_id))
                 .set((
                     sep31_transactions::status.eq(transaction.status.clone()),
-                    sep31_transactions::stellar_transaction_id.eq(transaction.stellar_transaction_id.clone()),
-    
+                    sep31_transactions::stellar_transaction_id
+                        .eq(transaction.stellar_transaction_id.clone()),
                 ))
                 .execute(&mut conn)
                 .map_err(|e| Sep31Error::DatabaseError(e.to_string()))?;
@@ -411,35 +430,32 @@ pub mod sep31 {
     ) -> Result<(), Sep31Error> {
         let client = Client::new();
 
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep31Error::KeypairGenerationFailed),
         };
 
-        let anchor_config = get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
-            .await
-            .map_err(|_| Sep31Error::AuthFailed)?;
+        let anchor_config =
+            get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
+                .await
+                .map_err(|_| Sep31Error::AuthFailed)?;
 
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            slug,
-            account,
-            &keypair,
-        )
-        .await
-        {
-            Ok(token) => token,
-            Err(_) => return Err(Sep31Error::AuthFailed),
-        };
+        let jwt =
+            match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
+                Ok(token) => token,
+                Err(_) => return Err(Sep31Error::AuthFailed),
+            };
 
         let direct_payment_server = &anchor_config.general_info.direct_payment_server;
-        let direct_payment_server_str = direct_payment_server.as_ref().map_or_else(
-            || "".to_string(),
-            |s| s.to_string(),
-        );
+        let direct_payment_server_str = direct_payment_server
+            .as_ref()
+            .map_or_else(|| "".to_string(), |s| s.to_string());
 
         let response = client
-            .put(&format!("{}/transactions/{}/callback", direct_payment_server_str, transaction_id))
+            .put(&format!(
+                "{}/transactions/{}/callback",
+                direct_payment_server_str, transaction_id
+            ))
             .bearer_auth(jwt)
             .json(&CallbackRequest {
                 url: callback_url.to_string(),

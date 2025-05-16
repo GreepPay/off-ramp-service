@@ -222,21 +222,15 @@ pub mod sep6 {
             |s| s.to_string(), // Use the string value if Some
         );
 
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            slug,
-            account,
-            &keypair,
-        )
-        .await
-        {
-            Ok(token) => token,
-            Err(_) => return Err(Sep6Error::AuthFailed),
-        };
+        let jwt =
+            match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
+                Ok(token) => token,
+                Err(_) => return Err(Sep6Error::AuthFailed),
+            };
 
         let mut request = client
             .get(&format!("{}/transactions", transfer_server_str))
@@ -341,7 +335,7 @@ pub mod sep6 {
         external_transaction_id: Option<&str>,
     ) -> Result<Sep6Transaction, Sep6Error> {
         let client = Client::new();
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep6Error::AuthFailed),
         }; //trying to use keypair error, buggy, will be back
@@ -357,17 +351,11 @@ pub mod sep6 {
             |s| s.to_string(), // Use the string value if Some
         );
 
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            slug,
-            account,
-            &keypair,
-        )
-        .await
-        {
-            Ok(token) => token,
-            Err(_) => return Err(Sep6Error::AuthFailed),
-        };
+        let jwt =
+            match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
+                Ok(token) => token,
+                Err(_) => return Err(Sep6Error::AuthFailed),
+            };
 
         let mut request = client
             .get(&format!("{}/transaction", transfer_server_str))
@@ -467,7 +455,7 @@ pub mod sep6 {
         refund_memo_type: Option<&str>,
     ) -> Result<WithdrawResponse, Sep6Error> {
         let client = Client::new();
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep6Error::AuthFailed),
         }; //trying to use keypair error, buggy, will be back
@@ -482,17 +470,11 @@ pub mod sep6 {
             || "".to_string(), // Default value if None
             |s| s.to_string(), // Use the string value if Some
         );
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            slug,
-            account,
-            &keypair,
-        )
-        .await
-        {
-            Ok(token) => token,
-            Err(_) => return Err(Sep6Error::AuthFailed),
-        };
+        let jwt =
+            match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
+                Ok(token) => token,
+                Err(_) => return Err(Sep6Error::AuthFailed),
+            };
 
         let mut request = client
             .get(&format!("{}/withdraw-exchange", transfer_server_str))
@@ -608,7 +590,7 @@ pub mod sep6 {
         refund_memo_type: Option<&str>,
     ) -> Result<WithdrawResponse, Sep6Error> {
         let client = Client::new();
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep6Error::AuthFailed),
         };
@@ -622,17 +604,11 @@ pub mod sep6 {
             || "".to_string(), // Default value if None
             |s| s.to_string(), // Use the string value if Some
         );
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            slug,
-            account,
-            &keypair,
-        )
-        .await
-        {
-            Ok(token) => token,
-            Err(_) => return Err(Sep6Error::AuthFailed),
-        };
+        let jwt =
+            match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
+                Ok(token) => token,
+                Err(_) => return Err(Sep6Error::AuthFailed),
+            };
 
         let mut request = client
             .get(&format!("{}/withdraw", transfer_server_str))

@@ -343,7 +343,7 @@ pub mod sep38 {
         context: String,
     ) -> Result<QuoteResponse, Sep38Error> {
         let client = Client::new();
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account.as_str()) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep38Error::Keypairgenerationfailed),
         };
@@ -354,13 +354,8 @@ pub mod sep38 {
                 .await
                 .map_err(|_| Sep38Error::AuthFailed)?;
 
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            &slug,
-            &account,
-            &keypair,
-        )
-        .await
+        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(), &slug, &keypair)
+            .await
         {
             Ok(token) => token,
             Err(_) => return Err(Sep38Error::AuthFailed),
@@ -445,7 +440,7 @@ pub mod sep38 {
     ) -> Result<QuoteResponse, Sep38Error> {
         let client = Client::new();
         // KeyPair::random() returns a Result, so we need to handle it
-        let keypair = match generate_keypair() {
+        let keypair = match generate_keypair(account.as_str()) {
             Ok(kp) => kp,
             Err(_) => return Err(Sep38Error::Keypairgenerationfailed),
         };
@@ -456,13 +451,8 @@ pub mod sep38 {
                 .await
                 .map_err(|_| Sep38Error::AuthFailed)?;
 
-        let jwt = match authenticate(
-            &helpers::stellartoml::AnchorService::new(),
-            &slug,
-            &account,
-            &keypair,
-        )
-        .await
+        let jwt = match authenticate(&helpers::stellartoml::AnchorService::new(), &slug, &keypair)
+            .await
         {
             Ok(token) => token,
             Err(_) => return Err(Sep38Error::AuthFailed),

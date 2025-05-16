@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use stellar_base::KeyPair;
 use thiserror::Error;
 
@@ -22,6 +24,6 @@ pub enum KeyPairError {
     IoError(#[from] std::io::Error),
 }
 
-pub fn generate_keypair() -> Result<KeyPair, KeyPairError> {
-    KeyPair::random().map_err(|_| KeyPairError::GenerationFailed)
+pub fn generate_keypair(account_secret: &str) -> Result<KeyPair, KeyPairError> {
+    KeyPair::from_secret_seed(account_secret).map_err(|_| KeyPairError::GenerationFailed)
 }
