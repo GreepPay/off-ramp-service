@@ -8,7 +8,6 @@ serde.workspace = true
 rocket.workspace = true
 chrono.workspace = true
 uuid.workspace = true
-multipart.workspace = true
 tokio.workspace = true
 bigdecimal.workspace = true
 serde_json.workspace = true
