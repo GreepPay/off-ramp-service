@@ -1,7 +1,8 @@
 pub mod form {
 
     use rocket::serde::{Deserialize, Serialize,};
-    use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
+    use rocket::form::FromForm;
+    use rocket::fs::TempFile;
 
     #[derive(Deserialize, Serialize)]
     #[serde(crate = "rocket::serde")]
@@ -14,22 +15,7 @@ pub mod form {
         pub customer_type: Option<String>,
     }
     
-    #[derive(Deserialize, Serialize)]
-    #[serde(crate = "rocket::serde")]
-    pub struct Sep12CreateKycForm {
-        pub slug: String,
-        pub account: String,
-        #[serde(default)]
-        pub memo: Option<String>,
-        pub customer_type: String,
-    }
-    
-    #[derive(Deserialize, Serialize)]
-    #[serde(crate = "rocket::serde")]
-    pub struct Sep12UpdateKycForm {
-        pub slug: String,
-        pub customer_id: String,
-    }
+
     
     #[derive(Deserialize, Serialize)]
     #[serde(crate = "rocket::serde")]
@@ -40,24 +26,39 @@ pub mod form {
         pub memo: Option<String>,
     }
     
-
-    #[derive(SerdeDeserialize, SerdeSerialize)]
-    #[serde(crate = "rocket::serde")]
-    pub struct Sep12FileField {
+    #[derive(FromForm)]
+    pub struct Sep12FileField<'v> {
+        #[field(name = "unused")]
         pub name: String,
-        #[serde(rename = "file")]
-        pub data: Vec<u8>,  // For binary file data in JSON (base64 encoded)
-        #[serde(rename = "content_type")]
+        #[field(name = "file")]
+        pub data: TempFile<'v>,  
+        #[field(name = "content_type")]
         pub content_type: String,
     }
     
-    #[derive(SerdeDeserialize, SerdeSerialize)]
-    #[serde(crate = "rocket::serde")]
-    pub struct Sep12FieldsAndFiles {
-        #[serde(rename = "field")]
+    #[derive(FromForm)]
+    pub struct Sep12FieldsAndFiles<'v> {
+        // KYC fields
+        pub slug: String,
+        pub account: String,
+        #[field(default = None)]
+        pub memo: Option<String>,
+        pub customer_type: String,
+        #[field(name = "field")]
         pub fields: Vec<(String, String)>,
-        #[serde(rename = "field")]
-        pub files: Vec<Sep12FileField>,
+        #[field(name = "file_field")]
+        pub files: Vec<Sep12FileField<'v>>,
     }
     
+    
+    
+    #[derive(FromForm)]
+    pub struct Sep12UpdateKycForm<'v> {
+        pub slug: String,
+        pub customer_id: String,
+        #[field(name = "field")]
+        pub fields: Vec<(String, String)>,
+        #[field(name = "file_field")]
+        pub files: Vec<Sep12FileField<'v>>
+    }
 }

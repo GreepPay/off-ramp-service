@@ -2,7 +2,7 @@ pub mod sep12 {
     use controllers::{
         api::api::{failure, success, ApiResponse},
         sep12::form::form::{
-            Sep12KycStatusForm, Sep12UpdateKycForm, Sep12DeleteKycForm,Sep12FieldsAndFiles
+            Sep12KycStatusForm, Sep12CreateKycForm, Sep12UpdateKycForm, Sep12DeleteKycForm,Sep12FieldsAndFiles
 
         },
         sep12::{
@@ -14,7 +14,7 @@ pub mod sep12 {
     use rocket::form::Form;
     use rocket::{delete, get, http::Status, post, put, response::status, serde::json::Json};
 
-    
+
     #[get("/customer", data = "<form>")]
     pub async fn get_kyc_status(
         form: Json<Sep12KycStatusForm>,
@@ -25,19 +25,21 @@ pub mod sep12 {
                 eprintln!("Error getting SEP-12 KYC status: {:?}", e);
                 failure("Failed to get KYC status", Status::InternalServerError)
             })?;
-    
+
         Ok(success(
             "Customer KYC status retrieved successfully",
             customer,
             Status::Ok,
         ))
     }
-    
-    #[put("/customer", data = "<data>", format = "multipart/form-data")]
+
+    #[put("/customer")]
     pub async fn create_kyc(
-        data: Form<Sep12FieldsAndFiles<'_>>,
+        data: Json<Sep12CreateKycForm>,
+        form: Form<Sep12FieldsAndFiles<'_>>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let customer = create_sep12_kyc(data.into_inner())
+        let data_tuple = Json((data.into_inner(), form.into_inner()));
+        let customer = create_sep12_kyc(data_tuple)
             .await
             .map_err(|e| {
                 eprintln!("Error creating SEP-12 KYC: {:?}", e);
@@ -52,11 +54,13 @@ pub mod sep12 {
     }
 
 
-    #[post("/customer", data = "<data>", format = "multipart/form-data")]
-    pub async fn update_kyc<'v>(
-        data: Form<Sep12UpdateKycForm<'v>>,
+    #[post("/customer")]
+    pub async fn update_kyc(
+        data: Json<Sep12UpdateKycForm>,
+        form: Form<Sep12FieldsAndFiles<'_>>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>> {
-        let customer = update_sep12_kyc(data.into_inner())
+        let data_tuple = Json((data.into_inner(), form.into_inner()));
+        let customer = update_sep12_kyc(data_tuple)
             .await
             .map_err(|e| {
                 eprintln!("Error updating SEP-12 KYC: {:?}", e);
@@ -69,8 +73,6 @@ pub mod sep12 {
             Status::Accepted,
         ))
     }
-    
-    
     #[put("/customer/callback")]
     pub async fn set_callback(
     ) -> Result<status::Custom<Json<ApiResponse<()>>>, status::Custom<Json<ApiResponse<()>>>> {
