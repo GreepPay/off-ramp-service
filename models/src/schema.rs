@@ -1,317 +1,312 @@
 // @generated automatically by Diesel CLI.
+
 pub mod offramp_service {
     diesel::table! {
-        use diesel::sql_types::*;
+        offramp_service.migrations (id) {
+            id -> Unsigned<Integer>,
+            #[max_length = 255]
+            migration -> Varchar,
+            batch -> Integer,
+        }
+    }
+    
+    diesel::table! {
+         offramp_service.sep31_transactions (id) {
+             id -> Uuid,
+             #[max_length = 56]
+             account -> Varchar,
+             memo -> Nullable<Text>,
+             #[max_length = 10]
+             memo_type -> Nullable<Varchar>,
+             transaction_id -> Varchar,
+             amount -> Numeric,
+             #[max_length = 255]
+             asset_code -> Varchar,
+             #[max_length = 255]
+             asset_issuer -> Nullable<Varchar>,
+             #[max_length = 255]
+             destination_asset -> Nullable<Varchar>,
+             #[max_length = 255]
+             quote_id -> Nullable<Varchar>,
+             #[max_length = 255]
+             sender_id -> Varchar,
+             #[max_length = 255]
+             receiver_id -> Varchar,
+             #[max_length = 56]
+             stellar_account_id -> Nullable<Varchar>,
+             #[max_length = 10]
+             stellar_memo_type -> Nullable<Varchar>,
+             stellar_memo -> Nullable<Text>,
+             #[max_length = 255]
+             status -> Varchar,
+             status_eta -> Nullable<Bigint>,
+             status_message -> Nullable<Text>,
+             amount_in -> Nullable<Numeric>,
+             #[max_length = 255]
+             amount_in_asset -> Nullable<Varchar>,
+             amount_out -> Nullable<Numeric>,
+             #[max_length = 255]
+             amount_out_asset -> Nullable<Varchar>,
+             amount_fee -> Nullable<Numeric>,
+             #[max_length = 255]
+             amount_fee_asset -> Nullable<Varchar>,
+             fee_details -> Nullable<Json>,
+             started_at -> Nullable<Timestamp>,
+             updated_at -> Nullable<Timestamp>,
+             completed_at -> Nullable<Timestamp>,
+             #[max_length = 255]
+             stellar_transaction_id -> Nullable<Varchar>,
+             #[max_length = 255]
+             external_transaction_id -> Nullable<Varchar>,
+             refunds -> Nullable<Json>,
+             required_info_message -> Nullable<Text>,
+             required_info_updates -> Nullable<Json>,
+             created_at -> Timestamp,
+         }
+     }
 
-        accounts (id) {
+    diesel::table! {
+        offramp_service.sep12_customers (id) {
             id -> Uuid,
-            stellar_address -> Text,
-            email -> Nullable<Text>,
-            name -> Nullable<Text>,
-            created_at -> Timestamp,
-            updated_at -> Timestamp, 
-            status -> Text,
-            kyc_status -> Text,
-            last_login -> Nullable<Timestamp>,
-            last_kyc_submitted -> Nullable<Timestamp>,
-            phone -> Nullable<Text>,
-            balance -> Nullable<Numeric>,
+            #[max_length = 56]
+            account -> Varchar,
             memo -> Nullable<Text>,
-            memo_type -> Nullable<Text>,
-        }
-    }
-
-    diesel::table! {
-        use diesel::sql_types::*;
-
-        offramp_transactions (id) {
-            id -> Uuid,
-            account_id -> Uuid,
-            transaction_id -> Text,
-            amount -> Numeric,
-            dest_currency -> Text,
-            status -> Text,
+            #[max_length = 10]
+            memo_type -> Nullable<Varchar>,
+            #[max_length = 20]
+            customer_type -> Varchar,
+            #[max_length = 20]
+            status -> Varchar,
+            #[max_length = 255]
+            first_name -> Nullable<Varchar>,
+            #[max_length = 255]
+            last_name -> Nullable<Varchar>,
+            #[max_length = 255]
+            email -> Nullable<Varchar>,
+            #[max_length = 255]
+            phone -> Nullable<Varchar>,
+            #[max_length = 255]
+            date_of_birth -> Nullable<Varchar>,
+            #[max_length = 255]
+            address_street -> Nullable<Varchar>,
+            #[max_length = 255]
+            address_city -> Nullable<Varchar>,
+            #[max_length = 255]
+            address_state -> Nullable<Varchar>,
+            #[max_length = 255]
+            address_postal_code -> Nullable<Varchar>,
+            #[max_length = 255]
+            address_country -> Nullable<Varchar>,
             created_at -> Timestamp,
             updated_at -> Timestamp,
         }
     }
 
     diesel::table! {
-        use diesel::sql_types::*;
-
-        sep38_assets (id) {
-            id -> Int4,
-            asset -> Text,
-            sell_delivery_methods -> Nullable<Jsonb>,
-            buy_delivery_methods -> Nullable<Jsonb>,
-            country_codes -> Nullable<Jsonb>,
+        offramp_service.sep12_customer_files (id) {
+            id -> Uuid,
+            customer_id -> Uuid,
+            #[max_length = 255]
+            file_name -> Varchar,
+            #[max_length = 255]
+            content_type -> Varchar,
+            size -> Bigint,
+            #[max_length = 255]
+            storage_path -> Varchar,
+            #[max_length = 255]
+            purpose -> Varchar,
             created_at -> Timestamp,
             updated_at -> Timestamp,
         }
     }
 
     diesel::table! {
-        use diesel::sql_types::*;
+        offramp_service.sep38_assets (id) {
+            id -> Integer,
+            #[max_length = 255]
+            asset -> Varchar,
+            sell_delivery_methods -> Nullable<Json>,
+            buy_delivery_methods -> Nullable<Json>,
+            country_codes -> Nullable<Json>,
+            created_at -> Timestamp,
+            updated_at -> Timestamp,
+        }
+    }
 
-        sep38_quotes (id) {
+    diesel::table! {
+        offramp_service.sep38_quotes (id) {
             id -> Uuid,
-            original_quote_id -> Text,
-            sell_asset -> Text,
-            buy_asset -> Text,
+            #[max_length = 255]
+            original_quote_id -> Varchar,
+            #[max_length = 255]
+            sell_asset -> Varchar,
+            #[max_length = 255]
+            buy_asset -> Varchar,
             sell_amount -> Numeric,
             buy_amount -> Numeric,
             price -> Numeric,
             total_price -> Numeric,
             fee_total -> Numeric,
-            fee_asset -> Text,
-            fee_details -> Nullable<Jsonb>,
-            sell_delivery_method -> Nullable<Text>,
-            buy_delivery_method -> Nullable<Text>,
+            #[max_length = 255]
+            fee_asset -> Varchar,
+            fee_details -> Nullable<Json>,
+            #[max_length = 255]
+            sell_delivery_method -> Nullable<Varchar>,
+            #[max_length = 255]
+            buy_delivery_method -> Nullable<Varchar>,
             expires_at -> Timestamp,
             created_at -> Timestamp,
-            context -> Text,
+            #[max_length = 255]
+            context -> Varchar,
             transaction_id -> Nullable<Uuid>,
         }
     }
 
     diesel::table! {
-        use diesel::sql_types::*;
-
-        price_responses (id) {
+        offramp_service.sep6_refund_payments (id) {
             id -> Uuid,
-            sell_asset -> Text,
-            buy_asset -> Text,
-            price -> Numeric,
-            total_price -> Numeric,
-            sell_amount -> Nullable<Numeric>,
-            buy_amount -> Nullable<Numeric>,
-            fee_details -> Nullable<Jsonb>,
-            fee_total -> Nullable<Numeric>,
-            fee_asset -> Nullable<Text>,
-            expires_at -> Nullable<Timestamp>,
+            refund_id -> Uuid,
+            #[max_length = 255]
+            payment_id -> Varchar,
+            #[max_length = 255]
+            id_type -> Varchar,
+            amount -> Numeric,
+            fee -> Numeric,
             created_at -> Timestamp,
-            updated_at -> Timestamp,
         }
     }
 
     diesel::table! {
-        use diesel::sql_types::*;
-
-        offramp_quotes (id) {
+        offramp_service.sep6_refunds (id) {
             id -> Uuid,
             transaction_id -> Uuid,
-            quote_id -> Text,
-            sell_asset -> Text,
-            buy_asset -> Text,
-            sell_amount -> Numeric,
-            buy_amount -> Numeric,
-            price -> Numeric,
-            expires_at -> Timestamp,
+            amount_refunded -> Numeric,
+            amount_fee -> Numeric,
             created_at -> Timestamp,
         }
     }
-
     diesel::table! {
-        use diesel::sql_types::*;
-
-        asset_info (asset_code, operation_type) {
-            asset_code -> Text,
-            operation_type -> Text,
-            asset_issuer -> Nullable<Text>,
-            min_amount -> Nullable<Double>,
-            max_amount -> Nullable<Double>,
-            fee_fixed -> Nullable<Double>,
-            fee_percent -> Nullable<Double>,
-            sep12_fields -> Nullable<Jsonb>,
-            sep38_contexts -> Nullable<Jsonb>,
-            extra_fields -> Nullable<Jsonb>,
-            created_at -> Timestamp,
-            updated_at -> Timestamp,
-        }
-    }
-
-    diesel::table! {
-        use diesel::sql_types::*;
-
-        sep6_transactions (id) {
+        #[sql_name = "sep6_transactions"]
+        #[allow(non_snake_case)]
+        offramp_service.sep6_transactions (id) {
             id -> Uuid,
-            transaction_id -> Text,
-            kind -> Text,
-            status -> Text,
-            status_eta -> Nullable<Int8>,
-            more_info_url -> Nullable<Text>,
+            #[max_length = 255]
+            anchor_slug -> Varchar,
+            #[max_length = 255]
+            transaction_id -> Varchar,
+            #[max_length = 255]
+            kind -> Varchar,
+            #[max_length = 255]
+            status -> Varchar,
+            status_eta -> Nullable<Bigint>,
+            #[max_length = 255]
+            more_info_url -> Nullable<Varchar>,
             amount_in -> Nullable<Numeric>,
-            amount_in_asset -> Nullable<Text>,
+            #[max_length = 255]
+            amount_in_asset -> Nullable<Varchar>,
             amount_out -> Nullable<Numeric>,
-            amount_out_asset -> Nullable<Text>,
+            #[max_length = 255]
+            amount_out_asset -> Nullable<Varchar>,
             amount_fee -> Nullable<Numeric>,
-            amount_fee_asset -> Nullable<Text>,
-            quote_id -> Nullable<Text>,
-            account -> Text,
-            memo -> Nullable<Text>,
-            memo_type -> Nullable<Text>,
-            withdraw_anchor_account -> Nullable<Text>,
-            withdraw_memo -> Nullable<Text>,
-            withdraw_memo_type -> Nullable<Text>,
-            external_transaction_id -> Nullable<Text>,
-            stellar_transaction_id -> Nullable<Text>,
-            refunded -> Nullable<Bool>,
-            required_info_updates -> Nullable<Jsonb>,
-            required_info_message -> Nullable<Text>,
-            claimable_balance_id -> Nullable<Text>,
-            created_at -> Timestamp,
-            updated_at -> Timestamp,
+            #[max_length = 255]
+            amount_fee_asset -> Nullable<Varchar>,
+            #[max_length = 255]
+            quote_id -> Nullable<Varchar>,
+            #[max_length = 255]
+            from -> Nullable<Varchar>,
+            #[max_length = 255]
+            to -> Nullable<Varchar>,
+            external_extra -> Nullable<Text>,
+            external_extra_text -> Nullable<Text>,
+            #[max_length = 255]
+            deposit_memo -> Nullable<Varchar>,
+            #[max_length = 255]
+            deposit_memo_type -> Nullable<Varchar>,
+            #[max_length = 255]
+            withdraw_anchor_account -> Nullable<Varchar>,
+            #[max_length = 255]
+            fee_details-> Nullable<Varchar>,
+            #[max_length = 255]
+            withdraw_memo -> Nullable<Varchar>,
+            #[max_length = 255]
+            withdraw_memo_type -> Nullable<Varchar>,
             started_at -> Nullable<Timestamp>,
+            updated_at -> Nullable<Timestamp>,
             completed_at -> Nullable<Timestamp>,
             user_action_required_by -> Nullable<Timestamp>,
-        }
-    }
-
-    diesel::table! {
-        use diesel::sql_types::*;
-
-        sep6_fees (id) {
-            id -> Uuid,
-            asset_code -> Text,
-            operation_type -> Text,
-            fee_fixed -> Nullable<Numeric>,
-            fee_percent -> Nullable<Numeric>,
-            fee_min -> Nullable<Numeric>,
-            fee_max -> Nullable<Numeric>,
+            #[max_length = 255]
+            stellar_transaction_id -> Nullable<Varchar>,
+            #[max_length = 255]
+            external_transaction_id -> Nullable<Varchar>,
+            message -> Nullable<Text>,
+            refunded -> Nullable<Bool>,
+            required_info_message -> Nullable<Varchar>,
+            required_info_updates -> Nullable<Text>,
+            instructions -> Nullable<Text>,
+            refunds -> Nullable<Varchar>,
+            claimable_balance_id -> Nullable<Varchar>,
             created_at -> Timestamp,
-            updated_at -> Timestamp,
+
         }
     }
 
     diesel::table! {
-        use diesel::sql_types::*;
-
-        sep6_withdraw_methods (id) {
-            id -> Uuid,
-            asset_code -> Text,
-            method_name -> Text,
-            description -> Nullable<Text>,
-            fields_required -> Nullable<Jsonb>,
-            min_amount -> Nullable<Numeric>,
-            max_amount -> Nullable<Numeric>,
-            fee_fixed -> Nullable<Numeric>,
-            fee_percent -> Nullable<Numeric>,
-            created_at -> Timestamp,
-            updated_at -> Timestamp,
+        offramp_service.user_auth_tokens (id) {
+            id -> Unsigned<Bigint>,
+            #[max_length = 255]
+            auth_id -> Char,
+            auth_token -> Longtext,
+            created_at -> Nullable<Timestamp>,
+            updated_at -> Nullable<Timestamp>,
         }
     }
 
     diesel::table! {
-        use diesel::sql_types::*;
-
-        sep12_customers (id) {
-            id -> Uuid,
-            account -> Text,
-            memo -> Nullable<Text>,
-            memo_type -> Nullable<Text>,
-            customer_type -> Text,
-            status -> Text,
-            first_name -> Nullable<Text>,
-            last_name -> Nullable<Text>,
-            email -> Nullable<Text>,
-            phone -> Nullable<Text>,
-            date_of_birth -> Nullable<Date>,
-            address_street -> Nullable<Text>,
-            address_city -> Nullable<Text>,
-            address_state -> Nullable<Text>,
-            address_postal_code -> Nullable<Text>,
-            address_country -> Nullable<Text>,
-            kyc_verified -> Bool,
-            verification_status -> Nullable<Text>,
-            created_at -> Timestamp,
-            updated_at -> Timestamp,
-            last_verified_at -> Nullable<Timestamp>,
+        offramp_service.users (id) {
+            id -> Unsigned<Bigint>,
+            #[max_length = 36]
+            uuid -> Char,
+            #[max_length = 255]
+            first_name -> Nullable<Char>,
+            #[max_length = 255]
+            last_name -> Nullable<Char>,
+            #[max_length = 255]
+            full_name -> Nullable<Char>,
+            #[max_length = 255]
+            email -> Nullable<Char>,
+            #[max_length = 255]
+            phone -> Nullable<Char>,
+            email_verified_at -> Nullable<Datetime>,
+            #[max_length = 255]
+            password -> Nullable<Varchar>,
+            password_created_at -> Nullable<Datetime>,
+            is_login_email -> Bool,
+            phone_verified_at -> Nullable<Datetime>,
+            #[max_length = 255]
+            status -> Char,
+            otp -> Nullable<Unsigned<Bigint>>,
+            otp_expired_at -> Nullable<Datetime>,
+            role_id -> Integer,
+            created_at -> Nullable<Timestamp>,
+            updated_at -> Nullable<Timestamp>,
+            deleted_at -> Nullable<Timestamp>,
+            #[max_length = 255]
+            username -> Nullable<Char>,
         }
     }
 
-    diesel::table! {
-        use diesel::sql_types::*;
-
-        sep12_customer_files (id) {
-            id -> Uuid,
-            customer_id -> Uuid,
-            file_name -> Text,
-            content_type -> Text,
-            size -> BigInt,
-            storage_path -> Text,
-            purpose -> Text,
-            uploaded_at -> Timestamp,
-            expires_at -> Nullable<Timestamp>,
-        }
-    }
-
-    diesel::table! {
-        use diesel::sql_types::*;
-
-        sep12_transactions (id) {
-            id -> Uuid,
-            transaction_id -> Text,
-            account -> Text,
-            memo -> Nullable<Text>,
-            memo_type -> Nullable<Text>,
-            customer_id -> Uuid,
-            status -> Text,
-            required_fields -> Nullable<Jsonb>,
-            created_at -> Timestamp,
-            updated_at -> Timestamp,
-        }
-    }
-
-    diesel::table! {
-        use diesel::sql_types::*;
-
-        sep12_callbacks (id) {
-            id -> Uuid,
-            account -> Text,
-            url -> Text,
-            last_attempt -> Nullable<Timestamp>,
-            last_status -> Nullable<Text>,
-            created_at -> Timestamp,
-            updated_at -> Timestamp,
-        }
-    }
-
-    diesel::table! {
-        use diesel::sql_types::*;
-
-        sep12_verifications (id) {
-            id -> Uuid,
-            customer_id -> Uuid,
-            method -> Text,
-            status -> Text,
-            verified_at -> Nullable<Timestamp>,
-            expires_at -> Nullable<Timestamp>,
-            created_at -> Timestamp,
-            updated_at -> Timestamp,
-        }
-    }
-
-    diesel::joinable!(offramp_quotes -> offramp_transactions (transaction_id));
-    diesel::joinable!(offramp_transactions -> accounts (account_id));
-    diesel::joinable!(sep38_quotes -> sep6_transactions (transaction_id));
     diesel::joinable!(sep12_customer_files -> sep12_customers (customer_id));
-    diesel::joinable!(sep12_transactions -> sep12_customers (customer_id));
-    diesel::joinable!(sep12_verifications -> sep12_customers (customer_id));
+    diesel::joinable!(sep6_refund_payments -> sep6_refunds (refund_id));
 
     diesel::allow_tables_to_appear_in_same_query!(
-        accounts,
-        asset_info,
-        offramp_transactions,
-        offramp_quotes,
-        sep6_transactions,
-        sep6_fees,
-        sep6_withdraw_methods,
-        sep38_assets,
-        sep38_quotes,
         sep12_customers,
         sep12_customer_files,
-        sep12_transactions,
-        sep12_callbacks,
-        sep12_verifications,
+        sep38_assets,
+        sep38_quotes,
+        sep6_refund_payments,
+        sep6_refunds,
+        sep6_transactions,
+        user_auth_tokens,
+        users,
     );
 }

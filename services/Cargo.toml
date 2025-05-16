@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+helpers = { path = "../helpers" }
 models = { path = "../models" }
 rocket.workspace = true
 diesel.workspace = true
@@ -29,3 +30,4 @@ xdr-codec.workspace = true
 toml.workspace = true
 serde_derive.workspace = true
 multipart.workspace = true
+url.workspace = true

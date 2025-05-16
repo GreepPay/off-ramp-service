@@ -1,56 +1,51 @@
 #[macro_use]
 extern crate rocket;
-use app::routes::auth;
-use app::routes::info;
-use app::routes::kyc;
-use app::routes::withdraw;
-
-
+use app::routes;
 
 #[launch]
-async fn rocket() -> _ {
+fn rocket() -> _ {
     // Load env
     dotenv::dotenv().ok();
 
- 
+    // Launch application
     rocket::build()
         .mount(
-            "/v1/auth",
+            "/v1/exchange",
             routes![
-                auth::get_challenge,
-                auth::get_jwt_token,
+                routes::sep38::routes::get_sep38_info_route,
+                routes::sep38::routes::get_sep38_price_route,
+                routes::sep38::routes::create_sep38_quote_route,
+                routes::sep38::routes::get_sep38_quote_route,
             ],
         )
         .mount(
-            "/v1/info",
+            "/v1/withdrawl",
             routes![
-                info::get_info,
-                info::get_prices,
-                info::get_price,
-                info::create_quote,
-                info::get_quote,
+                routes::sep6::sep6::withdraw,
+                routes::sep6::sep6::withdraw_exchange,
+                routes::sep6::sep6::anchorinfo,
+                routes::sep6::sep6::transactions,
+                routes::sep6::sep6::transaction,
             ],
         )
         .mount(
             "/v1/kyc",
             routes![
-                kyc::get_customer,
-                kyc::put_customer,
-                kyc::set_callback,
-                kyc::submit_verification,
-                kyc::delete_customer,
-                kyc::upload_file,
-                kyc::list_files,
+                routes::sep12::sep12::get_kyc_status,
+                routes::sep12::sep12::create_kyc,
+                routes::sep12::sep12::update_kyc,
+                routes::sep12::sep12::delete_customer,
             ],
         )
+    
         .mount(
-            "/v1/withdraw",
+            "/v1/crossborderpayment",
             routes![
-                withdraw::withdraw,
-               withdraw::withdraw_exchange,
-                withdraw::get_transactions,
-                withdraw::get_transaction,
-
+                routes::sep31::routes::get_sep31_info_route,
+                routes::sep31::routes::create_sep31_transaction_route,
+                routes::sep31::routes::get_sep31_transaction_route,
+                routes::sep31::routes::update_sep31_transaction_route,
+                routes::sep31::routes::set_sep31_transaction_callback_route,
             ],
         )
 }
