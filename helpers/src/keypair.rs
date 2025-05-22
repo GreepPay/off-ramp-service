@@ -23,5 +23,16 @@ pub enum KeyPairError {
 }
 
 pub fn generate_keypair(account_secret: &str) -> Result<KeyPair, KeyPairError> {
-    KeyPair::from_secret_seed(account_secret).map_err(|_| KeyPairError::GenerationFailed)
+    let result = KeyPair::from_secret_seed(account_secret);
+
+    match result {
+        Ok(keypair) => {
+            println!("Keypair generated successfully.");
+            Ok(keypair)
+        }
+        Err(e) => {
+            println!("Keypair generation failed: {:?}", e);
+            Err(KeyPairError::GenerationFailed)
+        }
+    }
 }

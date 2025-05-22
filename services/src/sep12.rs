@@ -40,24 +40,33 @@ pub mod sep12 {
     #[derive(Debug, Serialize, Deserialize)]
     pub struct Customer {
         pub id: Option<String>,
-        pub account: String,
+        pub account: Option<String>,
         pub memo: Option<String>,
         #[serde(rename = "type")]
         pub customer_type: Option<String>,
         pub status: String,
-        pub fields: Option<Vec<Field>>,
+        pub fields: Option<Fields>,
         pub provided_fields: Option<Vec<ProvidedField>>,
         pub message: Option<String>,
     }
 
     #[derive(Debug, Serialize, Deserialize)]
+    pub struct Fields {
+        pub first_name: Option<Field>,
+        pub last_name: Option<Field>,
+        pub email_address: Option<Field>,
+        pub mobile_number: Option<Field>,
+        pub bank_account_number: Option<Field>,
+        pub photo_id_front: Option<Field>,
+        pub photo_proof_residence: Option<Field>,
+        pub proof_of_liveness: Option<Field>,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
     pub struct Field {
-        pub name: String,
-        pub description: String,
         #[serde(rename = "type")]
         pub field_type: String,
-        pub optional: Option<bool>,
-        pub choices: Option<Vec<String>>,
+        pub description: String,
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -83,12 +92,14 @@ pub mod sep12 {
         account: &str,
         memo: Option<&str>,
         customer_type: Option<&str>,
-    ) -> Result<Vec<Field>, Sep12Error> {
+    ) -> Result<Fields, Sep12Error> {
         let client = reqwest::Client::new();
 
         let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
-            Err(_) => return Err(Sep12Error::Keypairgenerationfailed),
+            Err(_) => {
+                return Err(Sep12Error::Keypairgenerationfailed);
+            }
         };
 
         // Get anchor configuration for authentication
@@ -99,8 +110,11 @@ pub mod sep12 {
 
         let jwt =
             match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
-                Ok(token) => token,
-                Err(_) => return Err(Sep12Error::Keypairgenerationfailed),
+                Ok(jwt) => jwt,
+                Err(e) => {
+                    println!("Authentication error: {}", e);
+                    return Err(Sep12Error::AuthFailed);
+                }
             };
 
         let kyc_server = &anchor_config.general_info.kyc_server;
@@ -126,7 +140,7 @@ pub mod sep12 {
 
         if response.status().is_success() {
             let customer: Customer = response.json().await?;
-            Ok(customer.fields.unwrap_or_default())
+            Ok(customer.fields.unwrap())
         } else if response.status() == 404 {
             Err(Sep12Error::CustomerNotFound)
         } else {
@@ -148,18 +162,27 @@ pub mod sep12 {
 
         let keypair = match generate_keypair(account) {
             Ok(kp) => kp,
-            Err(_) => return Err(Sep12Error::Keypairgenerationfailed),
+            Err(_) => {
+                println!("Keypair generation failed");
+                return Err(Sep12Error::Keypairgenerationfailed);
+            }
         };
         // Get anchor configuration for authentication
         let anchor_config =
             get_anchor_config_details(&helpers::stellartoml::AnchorService::new(), slug)
                 .await
-                .map_err(|_| Sep12Error::AuthFailed)?;
+                .map_err(|_| {
+                    println!("Authentication failed in get_account_kyc");
+                    Sep12Error::AuthFailed
+                })?;
 
         let jwt =
             match authenticate(&helpers::stellartoml::AnchorService::new(), slug, &keypair).await {
                 Ok(token) => token,
-                Err(_) => return Err(Sep12Error::Keypairgenerationfailed),
+                Err(_) => {
+                    println!("JWT authentication failed");
+                    return Err(Sep12Error::Keypairgenerationfailed);
+                }
             };
 
         let kyc_server = &anchor_config.general_info.kyc_server;
@@ -174,19 +197,27 @@ pub mod sep12 {
 
         if let Some(m) = memo {
             request = request.query(&[("memo", m)]);
+            println!("Adding memo to the request: {}", m);
         }
 
         if let Some(t) = customer_type {
             request = request.query(&[("type", t)]);
+            println!("Adding customer_type to the request: {}", t);
         }
 
         let response = request.send().await?;
+        println!("Response status: {}", response.status());
 
         if response.status().is_success() {
-            Ok(response.json().await?)
+            let customer: Customer = response.json().await?;
+
+            Ok(customer)
         } else if response.status() == 404 {
+            println!("Customer not found");
             Err(Sep12Error::CustomerNotFound)
         } else {
+            let status = response.status();
+            println!("Invalid request with status: {}", status);
             Err(Sep12Error::InvalidRequest(format!(
                 "Status: {}",
                 response.status()

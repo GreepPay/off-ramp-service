@@ -73,34 +73,37 @@ pub async fn authenticate(
     let account_id = account_id_string.as_str();
 
     let challenge = get_challenge(&client, web_auth_endpoint, account_id, home_domain).await?;
+
     verify_challenge_structure(&challenge, account_id, signing_key, &network, home_domain)?;
+
     let signed_envelope = sign_challenge(&challenge, keypair, &network)?;
+
     let xdr_base64 = signed_envelope
         .xdr_base64()
         .map_err(|e| AuthError::XdrError(format!("XDR serialization failed: {}", e)))?;
-    get_jwt_token(&client, web_auth_endpoint, &xdr_base64).await
+
+    let jwt_token = get_jwt_token(&client, web_auth_endpoint, &xdr_base64).await?;
+
+    Ok(jwt_token)
 }
 
 pub async fn get_challenge(
     client: &Client,
     web_auth_endpoint: &str,
     account_id: &str,
-    client_domain: Option<&str>,
+    _client_domain: Option<&str>,
 ) -> Result<String, AuthError> {
-    let mut request = client
+    let request = client
         .get(web_auth_endpoint)
         .query(&[("account", account_id)]);
-
-    if let Some(domain) = client_domain {
-        request = request.query(&[("client_domain", domain)]);
-    }
 
     let response = request.send().await?;
 
     if !response.status().is_success() {
+        let body = response.text().await?;
         return Err(AuthError::AuthFailed(format!(
-            "Challenge request failed with status: {}",
-            response.status()
+            "Challenge request failed with status and body: {}",
+            body
         )));
     }
 
@@ -127,7 +130,6 @@ pub fn verify_jwt(token: &str, jwt_secret: &str, slug: &str) -> Result<String, A
 
     Ok(token_data.claims.sub)
 }
-
 fn verify_challenge_structure(
     challenge_xdr: &str,
     client_account: &str,
@@ -160,10 +162,11 @@ fn verify_challenge_structure(
         .signature_data(network)
         .map_err(|e| AuthError::XdrError(format!("Failed to get signature data: {}", e)))?;
 
-    let signature_valid = transaction
-        .signatures()
-        .iter()
-        .any(|sig| server_keypair.verify(&signature_data, sig.signature().as_bytes()));
+    let signature_valid = transaction.signatures().iter().any(|sig| {
+        let verified = server_keypair.verify(&signature_data, sig.signature().as_bytes());
+        if !verified {}
+        verified
+    });
 
     if !signature_valid {
         return Err(AuthError::SignatureError);
@@ -177,6 +180,7 @@ fn verify_challenge_structure(
     }
 
     let first_op = &operations[0];
+
     if let Operation::ManageData(op) = first_op {
         if let Some(source) = op.source_account() {
             if source.account_id().to_string() != client_account {
@@ -191,7 +195,14 @@ fn verify_challenge_structure(
             ));
         }
 
-        if op.data_name() != format!("{} auth", home_domain.unwrap_or("unknown")) {
+        if op.data_name()
+            != format!(
+                "{} auth",
+                home_domain
+                    .map(|d| d.trim_start_matches("https://"))
+                    .unwrap_or("unknown")
+            )
+        {
             return Err(AuthError::ChallengeError(format!(
                 "First operation key must be '{} auth'",
                 home_domain.unwrap_or("unknown")
