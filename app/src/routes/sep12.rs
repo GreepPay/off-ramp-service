@@ -10,7 +10,7 @@ pub mod sep12 {
     use rocket::{delete, http::Status, post, put, response::status, serde::json::Json};
     use services::sep12::sep12::Customer;
 
-    #[post("/customer", data = "<form>")]
+    #[post("/get-customer", data = "<form>")]
     pub async fn get_kyc_status(
         form: Json<Sep12KycStatusForm>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>>
