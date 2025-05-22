@@ -64,7 +64,49 @@ pub mod offramp_service {
              created_at -> Timestamp,
          }
      }
-
+     diesel::table! {
+         offramp_service.sep24_withdrawals (id) {
+             id -> Uuid,
+             transaction_id -> Varchar,
+             #[max_length = 255]
+             asset_code -> Varchar,
+             #[max_length = 255]
+             asset_issuer -> Nullable<Varchar>,
+             amount -> Nullable<Numeric>,
+             #[max_length = 56]
+             account -> Nullable<Varchar>,
+             memo -> Nullable<Text>,
+             #[max_length = 10]
+             memo_type -> Nullable<Varchar>,
+             #[max_length = 255]
+             status -> Varchar,
+             started_at -> Timestamp,
+             completed_at -> Nullable<Timestamp>,
+             #[max_length = 255]
+             stellar_transaction_id -> Nullable<Varchar>,
+             #[max_length = 255]
+             external_transaction_id -> Nullable<Varchar>,
+             #[max_length = 255]
+             quote_id -> Nullable<Varchar>,
+             #[max_length = 255]
+             withdraw_anchor_account -> Nullable<Varchar>,
+             #[max_length = 255]
+             withdraw_memo -> Nullable<Varchar>,
+             #[max_length = 10]
+             withdraw_memo_type -> Nullable<Varchar>,
+             #[max_length = 255]
+             wallet_name -> Nullable<Varchar>,
+             #[max_length = 255]
+             wallet_url -> Nullable<Varchar>,
+             #[max_length = 10]
+             lang -> Nullable<Varchar>,
+             #[max_length = 255]
+             refund_memo -> Nullable<Varchar>,
+             #[max_length = 10]
+             refund_memo_type -> Nullable<Varchar>,
+             created_at -> Timestamp,
+         }
+     }
     diesel::table! {
         offramp_service.sep12_customers (id) {
             id -> Uuid,
@@ -301,6 +343,7 @@ pub mod offramp_service {
     diesel::allow_tables_to_appear_in_same_query!(
         sep12_customers,
         sep12_customer_files,
+        sep24_withdrawals,
         sep38_assets,
         sep38_quotes,
         sep6_refund_payments,

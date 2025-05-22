@@ -48,4 +48,14 @@ fn rocket() -> _ {
                 routes::sep31::routes::set_sep31_transaction_callback_route,
             ],
         )
+    
+        .mount(
+            "/v1/sep24payment",
+            routes![
+                routes::sep24::routes::get_sep24_info_route,
+                routes::sep24::routes::interactive_sep24_withdraw_route,
+                routes::sep24::routes::get_sep24_transactions_route,
+                routes::sep24::routes::get_sep24_transaction_route,
+            ],
+        )
 }

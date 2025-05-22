@@ -177,3 +177,29 @@ CREATE TABLE offramp_service.sep31_transactions (
 CREATE INDEX idx_sep31_transactions_transaction_id ON offramp_service.sep31_transactions (transaction_id);
 
 CREATE INDEX idx_sep31_transactions_status ON offramp_service.sep31_transactions (status);
+
+CREATE TABLE offramp_service.sep24_withdrawals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    transaction_id VARCHAR NOT NULL,
+    asset_code VARCHAR(255) NOT NULL,
+    asset_issuer VARCHAR(255),
+    amount NUMERIC,
+    account VARCHAR(56),
+    memo TEXT,
+    memo_type VARCHAR(10),
+    status VARCHAR(255) NOT NULL,
+    started_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP,
+    stellar_transaction_id VARCHAR(255),
+    external_transaction_id VARCHAR(255),
+    quote_id VARCHAR(255),
+    withdraw_anchor_account VARCHAR(255),
+    withdraw_memo VARCHAR(255),
+    withdraw_memo_type VARCHAR(10),
+    wallet_name VARCHAR(255),
+    wallet_url VARCHAR(255),
+    lang VARCHAR(10),
+    refund_memo VARCHAR(255),
+    refund_memo_type VARCHAR(10),
+    created_at TIMESTAMP NOT NULL
+);
