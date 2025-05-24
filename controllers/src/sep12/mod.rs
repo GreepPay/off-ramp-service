@@ -23,34 +23,13 @@ pub async fn get_sep12_kyc_status(
 }
 
 pub async fn create_sep12_kyc<'v>(form: Sep12FieldsAndFiles<'v>) -> Result<Customer, Sep12Error> {
-    let mut files = Vec::new();
-
-    for file_field in &form.files {
-        let mut bytes = Vec::new();
-        let mut reader = file_field
-            .data
-            .open()
-            .await
-            .map_err(|e| Sep12Error::InvalidRequest(format!("File open failed: {}", e)))?;
-        reader
-            .read_to_end(&mut bytes)
-            .await
-            .map_err(|e| Sep12Error::InvalidRequest(format!("File read failed: {}", e)))?;
-
-        files.push((
-            file_field.name.clone(),
-            bytes,
-            file_field.content_type.clone(),
-        ));
-    }
-
     create_account_kyc(
         &form.slug,
         &form.account,
         form.memo.as_deref(),
         &form.customer_type,
         form.fields.clone(),
-        files,
+        form.files,
     )
     .await
 }

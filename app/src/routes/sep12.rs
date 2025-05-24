@@ -27,7 +27,7 @@ pub mod sep12 {
         ))
     }
 
-    #[put("/customer", data = "<data>", format = "multipart/form-data")]
+    #[post("/customer", data = "<data>", format = "multipart/form-data")]
     pub async fn create_kyc(
         data: Form<Sep12FieldsAndFiles<'_>>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>>
@@ -44,7 +44,7 @@ pub mod sep12 {
         ))
     }
 
-    #[post("/customer", data = "<data>", format = "multipart/form-data")]
+    #[put("/customer", data = "<data>", format = "multipart/form-data")]
     pub async fn update_kyc<'v>(
         data: Form<Sep12UpdateKycForm<'v>>,
     ) -> Result<status::Custom<Json<ApiResponse<Customer>>>, status::Custom<Json<ApiResponse<()>>>>

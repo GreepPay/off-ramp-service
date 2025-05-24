@@ -3,6 +3,8 @@ pub mod sep12 {
     use crate::common::get_anchor_config_details;
     use diesel::prelude::*;
     use helpers::{auth::authenticate, keypair::generate_keypair};
+    use rocket::fs::TempFile;
+    use rocket::tokio::io::AsyncReadExt;
     use serde::{Deserialize, Serialize};
     use thiserror::Error;
     use uuid::Uuid;
@@ -226,13 +228,13 @@ pub mod sep12 {
     }
 
     // 3. Create account KYC
-    pub async fn create_account_kyc(
+    pub async fn create_account_kyc<'v>(
         slug: &str,
         account: &str,
         memo: Option<&str>,
         customer_type: &str,
         fields: Vec<(String, String)>,
-        files: Vec<(String, Vec<u8>, String)>,
+        files: Vec<(String, TempFile<'v>)>,
     ) -> Result<Customer, Sep12Error> {
         let client = reqwest::Client::new();
 
@@ -258,21 +260,46 @@ pub mod sep12 {
             |s| s.to_string(), // Use the string value if Some
         );
         let mut form = reqwest::multipart::Form::new()
-            .text("account", account.to_string())
+            .text("account", keypair.public_key().to_string())
             .text("type", customer_type.to_string());
 
         if let Some(m) = memo {
             form = form.text("memo", m.to_string());
         }
 
+        form = form.text("memo_type", "id".to_string());
+
         for (name, value) in &fields {
             form = form.text(name.to_string(), value.to_string());
         }
 
-        for (name, content, content_type) in &files {
-            let part = reqwest::multipart::Part::bytes(content.clone())
-                .file_name(name.to_string())
-                .mime_str(content_type)?;
+        // Add files
+        for (name, temp_file) in &files {
+            let file_name = temp_file
+                .name()
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| name.clone());
+
+            let content_type = temp_file
+                .content_type()
+                .map(|ct| ct.to_string())
+                .unwrap_or_else(|| "application/octet-stream".to_string());
+
+            let mut buf = Vec::new();
+            let mut file = temp_file
+                .open()
+                .await
+                .map_err(|e| Sep12Error::InvalidRequest(format!("Failed to open file: {}", e)))?;
+
+            file.read_to_end(&mut buf)
+                .await
+                .map_err(|e| Sep12Error::InvalidRequest(format!("Failed to read file: {}", e)))?;
+
+            let part = reqwest::multipart::Part::bytes(buf)
+                .file_name(file_name)
+                .mime_str(&content_type)
+                .map_err(|e| Sep12Error::InvalidRequest(format!("Invalid MIME type: {}", e)))?;
+
             form = form.part(name.to_string(), part);
         }
 
@@ -293,7 +320,7 @@ pub mod sep12 {
             let new_customer = NewSep12Customer {
                 account: account.to_string(),
                 memo: memo.map(|s| s.to_string()),
-                memo_type: None, // You may need to get this from somewhere
+                memo_type: Some("id".to_string()), // You may need to get this from somewhere
                 customer_type: customer_type.to_string(),
                 status: customer_response.status.clone(),
                 first_name: fields
@@ -326,17 +353,33 @@ pub mod sep12 {
                 .map_err(|e| Sep12Error::DatabaseError(e.to_string()))?;
 
             // Save files if any
-            for (name, content, content_type) in &files {
+            for (name, temp_file) in &files {
                 let file_id = Uuid::new_v4();
                 let storage_path = format!("customers/{}/{}_{}", customer.id, file_id, name);
 
-                // In a real implementation, you would save the file to storage here
+                let file_name = temp_file
+                    .name()
+                    .map(|n| n.to_string())
+                    .unwrap_or_else(|| name.clone());
+                let content_type = temp_file
+                    .content_type()
+                    .map(|ct| ct.to_string())
+                    .unwrap_or_else(|| "application/octet-stream".to_string());
+
+                let mut file_content = Vec::new();
+                let mut file = temp_file.open().await.map_err(|e| {
+                    Sep12Error::InvalidRequest(format!("Failed to open file: {}", e))
+                })?;
+
+                file.read_to_end(&mut file_content).await.map_err(|e| {
+                    Sep12Error::InvalidRequest(format!("Failed to read file: {}", e))
+                })?;
 
                 let new_file = NewSep12CustomerFile {
                     customer_id: customer.id,
-                    file_name: name.to_string(),
+                    file_name: file_name.to_string(),
                     content_type: content_type.to_string(),
-                    size: content.len() as i64,
+                    size: file_content.len() as i64,
                     storage_path: storage_path.clone(),
                     purpose: name.to_string(),
                 };

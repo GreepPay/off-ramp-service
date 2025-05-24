@@ -42,10 +42,8 @@ pub mod form {
         #[field(default = None)]
         pub memo: Option<String>,
         pub customer_type: String,
-        #[field(name = "field")]
         pub fields: Vec<(String, String)>,
-        #[field(name = "file_field")]
-        pub files: Vec<Sep12FileField<'v>>,
+        pub files: Vec<(String, TempFile<'v>)>,
     }
 
     #[derive(FromForm)]
