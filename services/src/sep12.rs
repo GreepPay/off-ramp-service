@@ -318,7 +318,7 @@ pub mod sep12 {
                 establish_connection().map_err(|e| Sep12Error::DatabaseError(e.to_string()))?;
 
             let new_customer = NewSep12Customer {
-                account: account.to_string(),
+                account: keypair.public_key().to_string(),
                 memo: memo.map(|s| s.to_string()),
                 memo_type: Some("id".to_string()), // You may need to get this from somewhere
                 customer_type: customer_type.to_string(),
