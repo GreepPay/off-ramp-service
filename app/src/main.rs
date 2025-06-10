@@ -19,7 +19,7 @@ fn rocket() -> _ {
             ],
         )
         .mount(
-            "/v1/withdrawl",
+            "/v1/withdrawal",
             routes![
                 routes::sep6::sep6::withdraw,
                 routes::sep6::sep6::withdraw_exchange,
@@ -37,7 +37,6 @@ fn rocket() -> _ {
                 routes::sep12::sep12::delete_customer,
             ],
         )
-    
         .mount(
             "/v1/crossborderpayment",
             routes![

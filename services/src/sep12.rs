@@ -320,7 +320,7 @@ pub mod sep12 {
             let new_customer = NewSep12Customer {
                 account: keypair.public_key().to_string(),
                 memo: memo.map(|s| s.to_string()),
-                memo_type: Some("id".to_string()), // You may need to get this from somewhere
+                memo_type: Some("id".to_string()),
                 customer_type: customer_type.to_string(),
                 status: customer_response.status.clone(),
                 first_name: fields
@@ -337,7 +337,7 @@ pub mod sep12 {
                     .map(|(_, v)| (*v).to_string()),
                 phone: fields
                     .iter()
-                    .find(|(n, _)| *n == "phone_number")
+                    .find(|(n, _)| *n == "mobile_number")
                     .map(|(_, v)| (*v).to_string()),
                 date_of_birth: None, // Parse from fields if available
                 address_street: None,
